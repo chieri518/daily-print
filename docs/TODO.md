@@ -20,16 +20,16 @@
 
 ## Milestone 2: Web app
 
-- [ ] Next.js app on Vercel, with Supabase for sign-in and data
-- [ ] Settings page with the structured settings
-- [ ] Archive of past editions, with PDFs to download
-- [ ] Generate each user's edition at the time they set
-- [ ] Database tables:
-  - `users`
-  - `paper_settings`: paper name, typeface, page count, topics, location, print time
-  - `editions`: date, status, PDF link, cost, sources
-  - `articles`: edition, section, headline, body, sources (kept so readers can give feedback later)
-  - `devices`: printer boxes linked to each reader (for the printer box later)
+- [x] Next.js app on Vercel, with Supabase for sign-in and data
+- [x] Settings page with the structured settings
+- [x] Archive of past editions, with PDFs to download
+- [x] "Generate today's paper" button, running as a Vercel Workflow
+- [x] Database tables `papers` and `editions`, and a private storage bucket for PDFs
+- [ ] **Create the Supabase project, set up Google sign-in and add the environment variables** (see the README)
+- [ ] Generate a first edition on Vercel and check how long each step takes
+- [ ] Generate each user's edition at the time they set (needs a print time and time zone in settings)
+- [ ] Show an edition's error and cost in the archive
+- [ ] Later tables: `articles` (for feedback) and `devices` (for the printer box)
 
 ## Milestone 3: More customization
 

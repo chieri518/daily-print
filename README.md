@@ -1,4 +1,4 @@
-# daily-news
+# daily-print
 
 An AI agent that puts together a personal daily **newspaper**, not a news feed. Each edition is a printable, page-by-page PDF built around one reader's interests, location and preferences.
 
@@ -13,23 +13,43 @@ Why a newspaper and not a news app:
 ## Status
 
 Milestone 1 (MVP) is built: one command writes today's 4-page paper as a PDF.
+Milestone 2 has started: a web app where readers sign in with Google, edit their settings, generate today's paper and open past editions.
+
+## Set up
+
+Requires Node 24 or later.
+
+1. `npm install`, then `npx playwright-core install chromium` (used to print PDFs locally).
+2. Copy `.env.example` to `.env` and add your Anthropic API key.
+
+### Supabase (for the web app)
+
+1. Create a project at [supabase.com](https://supabase.com). Under Project Settings → API Keys, copy the URL, the publishable key and a secret key into `.env`.
+2. Create the tables and storage bucket: `npx supabase login`, `npx supabase link`, then `npx supabase db push`.
+3. Google sign-in: in Google Cloud, create an OAuth client of type "Web application" with the redirect URI shown on Supabase's Authentication → Providers → Google page. Paste the client ID and secret into that page and turn Google on.
+4. Under Authentication → URL Configuration, add `http://localhost:3000/auth/callback` and your Vercel URL plus `/auth/callback` to the redirect URLs.
+5. Put your email in `ALLOWED_EMAILS` so you can generate editions.
+6. On Vercel, add the same variables: `vercel env add NAME` for each one in `.env.example`.
 
 ## Run it
 
-1. Requires Node 24 or later.
-2. Install: `npm install`, then `npx playwright install chromium`.
-3. Copy `.env.example` to `.env` and add your Anthropic API key.
-4. Edit [paper.json](paper.json) to set the paper name, typeface (`classic`, `caslon` or `bodoni`), location and sections.
-5. Run `npm run paper`. The paper is saved to `editions/YYYY-MM-DD.pdf`, and its text and cost go to `editions/YYYY-MM-DD.json`.
+- **Web app:** `npm run dev`, then open http://localhost:3000. Run `npx workflow web` to watch edition runs.
+- **One command, no web app:** edit [paper.json](paper.json) and run `npm run paper`. The paper is saved to `editions/YYYY-MM-DD.pdf`, and its text and cost go to `editions/YYYY-MM-DD.json`. New readers in the web app also start with paper.json's settings.
 
 ## Code
 
 | File | What it does |
 |---|---|
-| [src/generate.ts](src/generate.ts) | Entry point: writes the edition, lays it out, saves the PDF |
-| [src/editor.ts](src/editor.ts) | The agent: researches with web search, then writes the edition |
-| [src/claude.ts](src/claude.ts) | Calls Claude and keeps track of cost |
-| [src/layout.ts](src/layout.ts), [src/paper.css](src/paper.css) | Newspaper layout and typefaces |
+| [app/](app/) | Web app pages: editions archive, settings, sign-in, PDF links |
+| [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start an edition |
+| [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, print the PDF and save it |
+| [lib/editor.ts](lib/editor.ts) | The agent: researches with web search, then writes the edition. Also the `Settings` schema |
+| [lib/claude.ts](lib/claude.ts) | Calls Claude and works out each call's cost |
+| [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts) | Newspaper layout and typefaces |
+| [lib/render.ts](lib/render.ts) | Prints the layout to PDF with headless Chromium, shrinking text that doesn't fit |
+| [lib/supabase/](lib/supabase/) | Supabase clients for the signed-in reader and for the workflow |
+| [scripts/paper.ts](scripts/paper.ts) | `npm run paper`: makes an edition from paper.json without the web app |
+| [supabase/migrations/](supabase/migrations/) | Database tables, security rules and the PDF bucket |
 
 ## Docs
 

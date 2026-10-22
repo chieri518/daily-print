@@ -1,0 +1,39 @@
+:root {
+  --ink: #111;
+  --muted: #666;
+  --paper: #faf8f3;
+  --rule: #111;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eee;
+    --muted: #999;
+    --paper: #151515;
+    --rule: #ddd;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.5 var(--body), Georgia, serif; }
+main { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+a { color: inherit; }
+h1, h2 { font-family: var(--headline), Georgia, serif; line-height: 1.15; }
+.muted { color: var(--muted); }
+
+.masthead { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; text-align: center; border-bottom: 3px double var(--rule); }
+.masthead > a { font-family: var(--masthead), serif; font-size: 3.2rem; text-decoration: none; }
+.masthead nav { display: flex; justify-content: center; gap: 1.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+button { font: inherit; cursor: pointer; }
+.button { background: var(--ink); color: var(--paper); border: 0; padding: 0.6rem 1.2rem; font-weight: 600; }
+.button:disabled { opacity: 0.5; cursor: wait; }
+.link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; text-transform: inherit; letter-spacing: inherit; }
+
+.editions { list-style: none; padding: 0; }
+.editions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }
+
+form.settings { display: grid; gap: 1rem; }
+label { display: grid; gap: 0.25rem; font-weight: 600; }
+input, select { font: inherit; font-weight: normal; padding: 0.45rem; border: 1px solid var(--rule); background: transparent; color: inherit; width: 100%; }
+fieldset { border: 1px solid var(--rule); display: grid; gap: 0.75rem; }

@@ -1,19 +1,16 @@
-import { readFileSync } from "node:fs";
 import type { Edition, Settings, Story } from "./editor.ts";
+import { css } from "./paper-css.ts";
 
-// Font sets readers can choose with "typeface" in paper.json. All are free Google Fonts.
-const TYPEFACES: Record<string, { masthead: string; headline: string; body: string }> = {
+// Font sets readers can choose from. All are free Google Fonts.
+const TYPEFACES: Record<Settings["typeface"], { masthead: string; headline: string; body: string }> = {
   classic: { masthead: "UnifrakturMaguntia", headline: "Playfair Display", body: "Source Serif 4" },
   caslon: { masthead: "Libre Caslon Display", headline: "Libre Caslon Text", body: "Libre Caslon Text" },
   bodoni: { masthead: "Bodoni Moda", headline: "Bodoni Moda", body: "Newsreader" },
 };
 
-const css = readFileSync(new URL("./paper.css", import.meta.url), "utf8");
-
 // Builds the newspaper as one HTML document, one <section> per printed page.
 export function layout(settings: Settings, date: string, edition: Edition) {
   const fonts = TYPEFACES[settings.typeface];
-  if (!fonts) throw new Error(`Unknown typeface "${settings.typeface}". Choose one of: ${Object.keys(TYPEFACES).join(", ")}`);
 
   const [lead, ...others] = edition.frontPage;
   const frontPage = `

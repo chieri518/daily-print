@@ -1,3 +1,10 @@
 node_modules/
 editions/
 .env
+.env*.local
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+.workflow-data/
+/.swc

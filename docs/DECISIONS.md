@@ -48,3 +48,17 @@ This file records the owner's stated preferences and the decisions made from the
 |---|---|---|
 | End goal | The paper **prints automatically every morning** on a physical printer | Hardware is probably a Raspberry Pi; not decided yet |
 | Architecture | Organized as presentation, service and data layers. The printer box is another client, like the web app | See [ARCHITECTURE.md](ARCHITECTURE.md) |
+
+## 2026-10-22: Web app (Milestone 2, first version)
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Name | The repo and website are called **daily-print** (was daily-news) | |
+| Scope | Sign in, edit settings, press "Generate today's paper", then read past editions as PDFs | Scheduled editions come later |
+| Sign-in | **Google** through Supabase Auth | Fits the planned Google Calendar and Photos features |
+| Who can generate | Only emails listed in `ALLOWED_EMAILS` | Anyone can sign in with Google, but each edition costs money |
+| Generation | A **Vercel Workflow** with three steps: research, write, print. Each Claude step retries at most once | PDFs are rendered with `@sparticuz/chromium` on Vercel and with Playwright's Chromium locally |
+| Date | "Today" is today in the reader's browser time zone, sent when they press Generate | Answers part of the time zone question for on-demand editions |
+| Data | Two tables: `papers` (settings as JSON, checked by the `Settings` schema in code) and `editions` (status, text with sources, cost). PDFs go in a private `editions` storage bucket at `{user_id}/{edition_id}.pdf` | No `users` table (Supabase's `auth.users` is enough). No `articles` or `devices` tables until a feature needs them |
+| Settings | Paper name, typeface, location and the two sections on pages 2 and 3 | |
+| Code layout | Next.js app at the repo root. The edition pipeline lives in `lib/` and is shared by the web app and the `npm run paper` command | |

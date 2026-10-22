@@ -1,5 +1,5 @@
-/* Printed newspaper: US Letter, black and white. Sizes are in em so the fit step can shrink a whole page at once. */
-
+// Printed newspaper: US Letter, black and white. Sizes are in em so the fit step can shrink a whole page at once.
+export const css = `
 @page { size: Letter; margin: 0; }
 * { box-sizing: border-box; margin: 0; }
 body { font-family: var(--body), serif; color: #000; background: #fff; }
@@ -30,3 +30,4 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .body { columns: 3; column-gap: 1.5em; column-rule: 1px solid #999; text-align: justify; hyphens: auto; }
 .body p + p { text-indent: 1em; }
 .body .sources { text-indent: 0; font-size: 0.8em; font-style: italic; margin-top: 0.3em; }
+`;

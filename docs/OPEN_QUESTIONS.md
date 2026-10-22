@@ -4,7 +4,7 @@ Questions marked **[Next]** need an answer before adding illustrations.
 
 ## Product
 
-- **Date and edition:** should "today's paper" cover news up to that morning in the user's timezone? Does it need a timezone setting?
+- **Date and edition:** on-demand editions use the browser's time zone. Scheduled editions will need a time zone setting.
 - **Duplicates:** what happens when a big story fits several of the user's topics?
 - **Content safety:** are any topics excluded by default (for example graphic violence)? How should paywalled sources be handled?
 - **[Next] Image style:** the paper is black and white, so the house style must work in grayscale. Choose between woodcut, pen and ink, or stippled engraving. It should look the same across editions.
@@ -15,8 +15,8 @@ Questions marked **[Next]** need an answer before adding illustrations.
 - **Fitting text:** text that is too long now shrinks to fit, but a short page still leaves empty space at the bottom. If real editions show this, ask Claude to lengthen or cut stories based on the measured space.
 - **Smallest readable size:** is text shrunk to 7.5pt still readable when printed? Check on paper and raise the minimum if not.
 - **Which Claude model for which step:** a strong model for editing and writing, and maybe a cheaper one for sorting through research. Settle this once costs are measured.
-- **Where PDFs are rendered once deployed:** headless Chromium on Vercel Functions, or a separate worker or container?
-- **Long jobs:** generating one edition may take minutes. Does it need a durable workflow or queue?
+- **Step length on Vercel:** each workflow step runs in one function call. Will the research step (web search) finish within the plan's function time limit? Measure it on the first deployed run.
+- **Fonts on Vercel:** the PDF loads Google Fonts over the network while rendering. Check the deployed PDFs use the right typefaces.
 
 ## Legal
 

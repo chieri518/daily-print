@@ -1,30 +1,40 @@
 {
-  "name": "daily-news",
+  "name": "daily-print",
   "version": "1.0.0",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
-    "paper": "node --env-file-if-exists=.env src/generate.ts",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "paper": "node --env-file-if-exists=.env scripts/paper.ts",
     "check": "tsc"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chieri518/daily-news.git"
+    "url": "git+https://github.com/chieri518/daily-print.git"
   },
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/chieri518/daily-news/issues"
+    "url": "https://github.com/chieri518/daily-print/issues"
   },
-  "homepage": "https://github.com/chieri518/daily-news#readme",
+  "homepage": "https://github.com/chieri518/daily-print#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
-    "playwright": "^1.64.1",
+    "@sparticuz/chromium": "153.0.0",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0",
+    "next": "16.4.2",
+    "playwright-core": "1.64.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "workflow": "5.2.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "supabase": "^2.121.0",
     "typescript": "^7.0.2"
   }
 }
