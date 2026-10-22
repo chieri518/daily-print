@@ -1,0 +1,9 @@
+{
+  "name": "The Morning Edition",
+  "typeface": "classic",
+  "location": "San Francisco Bay Area",
+  "sections": [
+    { "title": "Startups & Tech", "about": "startups, venture funding, AI and big tech" },
+    { "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }
+  ]
+}

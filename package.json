@@ -1,0 +1,30 @@
+{
+  "name": "daily-news",
+  "version": "1.0.0",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "paper": "node --env-file-if-exists=.env src/generate.ts",
+    "check": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chieri518/daily-news.git"
+  },
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/chieri518/daily-news/issues"
+  },
+  "homepage": "https://github.com/chieri518/daily-news#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
+    "playwright": "^1.64.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
