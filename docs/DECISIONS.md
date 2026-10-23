@@ -62,3 +62,11 @@ This file records the owner's stated preferences and the decisions made from the
 | Data | Two tables: `papers` (settings as JSON, checked by the `Settings` schema in code) and `editions` (status, text with sources, cost). PDFs go in a private `editions` storage bucket at `{user_id}/{edition_id}.pdf` | No `users` table (Supabase's `auth.users` is enough). No `articles` or `devices` tables until a feature needs them |
 | Settings | Paper name, typeface, location and the two sections on pages 2 and 3 | |
 | Code layout | Next.js app at the repo root. The edition pipeline lives in `lib/` and is shared by the web app and the `npm run paper` command | |
+
+## 2026-10-23: Testing on the Claude subscription
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Local testing | `USE_CLAUDE_CODE=1` runs Claude through the Claude Code CLI on the owner's Claude subscription instead of the API | For personal testing on the owner's machine only, until the owner is ready to publish. Works with `npm run paper` and with the web app in `npm run dev` |
+| Deployed app | Always uses `ANTHROPIC_API_KEY` | A subscription login isn't allowed in a deployed or multi-user app |
+| Differences | Claude Code uses its own web search tools and the `opus` model alias, which may be a different Opus version than the API's `claude-opus-5-5`. The cost it reports is an estimate of the API price | Compare a few editions from both before publishing |

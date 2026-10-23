@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { ask } from "./claude.ts";
 
 // A reader's paper. The 4-page paper has room for two sections of their choice (pages 2 and 3).
@@ -40,26 +39,22 @@ const OPINION = {
 // Step 1: research today's news with web search. Returns notes, not articles.
 export async function research(settings: Settings, date: string) {
   const sectionList = [...settings.sections, OPINION].map((s) => `- ${s.title}: ${s.about}`).join("\n");
-  const { message, usd } = await ask(
+  const { text: notes, usd } = await ask(
     `Today is ${date}. You are researching a personal newspaper for a reader in ${settings.location}.
 Find the most important news from the last 24 hours for each section:
 ${sectionList}
 
 Also find today's weather forecast for ${settings.location}.
 For every story, give the key facts and the source names and URLs. Write notes, not articles.`,
-    {
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 12 }],
-      output_config: { effort: "medium" },
-    },
+    { search: true },
   );
-  const notes = message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
   return { notes, usd };
 }
 
 // Step 2: edit and write the edition from the notes.
 export async function write(settings: Settings, date: string, notes: string) {
   const sections = [...settings.sections, OPINION];
-  const { message, usd } = await ask(
+  const { text, usd } = await ask(
     `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
 Today is ${date}. Write today's edition from the research notes below.
 
@@ -74,8 +69,7 @@ Rules:
 
 Research notes:
 ${notes}`,
-    { output_config: { effort: "medium", format: betaZodOutputFormat(Edition) } },
+    { schema: Edition },
   );
-  if (!message.parsed_output) throw new Error("Claude's edition didn't match the expected format.");
-  return { edition: message.parsed_output, usd };
+  return { edition: Edition.parse(JSON.parse(text)), usd };
 }

@@ -8,7 +8,8 @@
 - [x] Render the PDF with headless Chromium
 - [x] Fit check: shrink text that is too long
 - [x] Log the cost of each edition
-- [ ] **Add your API key to `.env` and run the first real edition**
+- [x] Test mode on the Claude subscription (`USE_CLAUDE_CODE=1`)
+- [ ] **Run the first real edition** (`USE_CLAUDE_CODE=1 npm run paper`)
 - [ ] Print a test edition on paper and review it
 - [ ] Run the same settings at $0.10, $0.50 and $1.00 per edition and compare quality side by side
 

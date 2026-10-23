@@ -34,6 +34,7 @@ Requires Node 24 or later.
 ## Run it
 
 - **Web app:** `npm run dev`, then open http://localhost:3000. Run `npx workflow web` to watch edition runs.
+- **Test on your Claude subscription:** set `USE_CLAUDE_CODE=1` in `.env` (or put it in front of a command, for example `USE_CLAUDE_CODE=1 npm run paper`). Claude runs through the [Claude Code](https://claude.com/claude-code) CLI on this machine, using your subscription instead of the API. You need Claude Code installed and signed in. This is for personal testing only, and never on Vercel.
 - **One command, no web app:** edit [paper.json](paper.json) and run `npm run paper`. The paper is saved to `editions/YYYY-MM-DD.pdf`, and its text and cost go to `editions/YYYY-MM-DD.json`. New readers in the web app also start with paper.json's settings.
 
 ## Code
