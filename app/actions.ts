@@ -32,12 +32,13 @@ export async function signOut() {
   redirect("/");
 }
 
-export async function saveSettings(form: FormData) {
+export async function saveSettings(json: string) {
   const reader = await requireReader();
-  const settings = Settings.parse(JSON.parse(String(form.get("settings"))));
-  const { error } = await reader.supabase.from("papers").upsert({ user_id: reader.id, settings, updated_at: new Date().toISOString() });
+  const settings = Settings.parse(JSON.parse(json));
+  const { error } = await reader.supabase
+    .from("papers")
+    .upsert({ user_id: reader.id, settings, updated_at: new Date().toISOString() });
   if (error) throw error;
-  redirect("/customize?saved=1");
 }
 
 // Starts today's edition in the reader's time zone. It is written in the background and appears in the archive when ready.
@@ -46,7 +47,11 @@ export async function generate(form: FormData) {
   if (!canGenerate(reader)) throw new Error("Your account isn't allowed to generate editions yet.");
   const settings = await loadSettings(reader);
   const { date, day } = today(String(form.get("timeZone")));
-  const { data, error } = await reader.supabase.from("editions").insert({ user_id: reader.id, day }).select("id").single();
+  const { data, error } = await reader.supabase
+    .from("editions")
+    .insert({ user_id: reader.id, day })
+    .select("id")
+    .single();
   if (error) throw error;
   await start(makeEdition, [data.id, reader.id, settings, date]);
   revalidatePath("/");

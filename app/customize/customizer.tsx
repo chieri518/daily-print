@@ -1,23 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { saveSettings } from "../actions";
 import { PageBuilder, type Draft } from "./page-builder";
 import { fontsUrl, PAPER_SIZES, READING_LEVELS, TONES, TYPEFACES, type Settings } from "@/lib/settings";
 
-const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
+const TABS = ["Pages", "Paper & style", "Writing & sources"];
+
+const lines = (text: string) =>
+  text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
 export function Customizer({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial);
   const [pages, setPages] = useState<Draft[]>(initial.pages);
   const [trusted, setTrusted] = useState(initial.trustedSources.join("\n"));
   const [blocked, setBlocked] = useState(initial.blockedSources.join("\n"));
+  const [tab, setTab] = useState(TABS[0]);
 
   const set = (change: Partial<Settings>) => setSettings({ ...settings, ...change });
-  const saved = JSON.stringify({ ...settings, pages, trustedSources: lines(trusted), blockedSources: lines(blocked) });
-  const [initialSaved] = useState(saved);
-  const unsaved = saved !== initialSaved;
-  const complete = pages.every((p) => p.slots.every(Boolean));
+  const json = JSON.stringify({ ...settings, pages, trustedSources: lines(trusted), blockedSources: lines(blocked) });
+  const [savedJson, setSavedJson] = useState(json); // what was last saved, to tell if there are unsaved changes
+  const [savedOnce, setSavedOnce] = useState(false);
+  const unsaved = json !== savedJson;
+
+  // Why the paper can't be saved yet, if anything is missing.
+  const problem = !pages.every((p) => p.slots.every(Boolean))
+    ? "Fill the dashed slots on your pages."
+    : !settings.name.trim()
+    ? "Add a paper name in Paper & style."
+    : !settings.location.trim()
+    ? "Add a location in Paper & style."
+    : null;
 
   // Warn before closing or reloading the page with unsaved changes.
   useEffect(() => {
@@ -27,43 +44,75 @@ export function Customizer({ initial }: { initial: Settings }) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [unsaved]);
 
+  const save = async () => {
+    await saveSettings(json);
+    setSavedJson(json);
+    setSavedOnce(true);
+  };
+
   return (
-    <form action={saveSettings} className="customize">
-      <link rel="stylesheet" href={fontsUrl(TYPEFACES[settings.typeface])} precedence="default" />
-      <input type="hidden" name="settings" value={saved} />
+    <form action={save} className="customize">
+      {/* All typefaces, so their cards can show them */}
+      {Object.values(TYPEFACES).map((t) => (
+        <link key={t.label} rel="stylesheet" href={fontsUrl(t)} precedence="default" />
+      ))}
 
-      <PageBuilder settings={settings} set={set} pages={pages} setPages={setPages} />
+      <div className="tabs" role="tablist">
+        {TABS.map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
 
-      <fieldset>
-        <legend>Paper</legend>
+      <div hidden={tab !== "Pages"}>
+        <PageBuilder settings={settings} set={set} pages={pages} setPages={setPages} />
+      </div>
+
+      <div className="fields" hidden={tab !== "Paper & style"}>
         <label>
           Paper name
-          <input value={settings.name} onChange={(e) => set({ name: e.target.value })} required maxLength={60} />
+          <input value={settings.name} onChange={(e) => set({ name: e.target.value })} maxLength={60} />
         </label>
         <label>
-          Typeface
-          <select value={settings.typeface} onChange={(e) => set({ typeface: e.target.value as Settings["typeface"] })}>
-            <Options options={TYPEFACES} />
-          </select>
+          <span>
+            Location <span className="muted">(for local news and the weather)</span>
+          </span>
+          <input value={settings.location} onChange={(e) => set({ location: e.target.value })} maxLength={100} />
         </label>
         <label>
           Paper size
-          <select value={settings.paperSize} onChange={(e) => set({ paperSize: e.target.value as Settings["paperSize"] })}>
+          <select
+            value={settings.paperSize}
+            onChange={(e) => set({ paperSize: e.target.value as Settings["paperSize"] })}
+          >
             <Options options={PAPER_SIZES} />
           </select>
         </label>
-        <label>
-          Location
-          <input value={settings.location} onChange={(e) => set({ location: e.target.value })} required maxLength={100} />
-        </label>
-      </fieldset>
+        <fieldset className="typefaces wide">
+          <legend>Typeface</legend>
+          {Object.entries(TYPEFACES).map(([key, t]) => (
+            <label key={key} className="typeface">
+              <input
+                type="radio"
+                name="typeface"
+                checked={settings.typeface === key}
+                onChange={() => set({ typeface: key as Settings["typeface"] })}
+              />
+              <span className="typeface-masthead" style={{ fontFamily: t.masthead }}>
+                {settings.name || "Your paper"}
+              </span>
+              <span className="typeface-headline" style={{ fontFamily: t.headline }}>
+                City opens new park by the bay
+              </span>
+              <span style={{ fontFamily: t.body }}>Story text looks like this, in columns across the page.</span>
+              <span className="muted">{t.label}</span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
 
-      <fieldset>
-        <legend>Writing</legend>
-        <label>
-          Language
-          <input value={settings.language} onChange={(e) => set({ language: e.target.value })} required maxLength={40} />
-        </label>
+      <div className="fields" hidden={tab !== "Writing & sources"}>
         <label>
           Tone
           <select value={settings.tone} onChange={(e) => set({ tone: e.target.value as Settings["tone"] })}>
@@ -72,46 +121,60 @@ export function Customizer({ initial }: { initial: Settings }) {
         </label>
         <label>
           Reading level
-          <select value={settings.readingLevel} onChange={(e) => set({ readingLevel: e.target.value as Settings["readingLevel"] })}>
+          <select
+            value={settings.readingLevel}
+            onChange={(e) => set({ readingLevel: e.target.value as Settings["readingLevel"] })}
+          >
             <Options options={READING_LEVELS} />
           </select>
         </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>Sources</legend>
+        <label className="wide">
+          <span>
+            Brief to the editor <span className="muted">(optional)</span>
+          </span>
+          <textarea
+            value={settings.brief}
+            onChange={(e) => set({ brief: e.target.value })}
+            rows={4}
+            maxLength={2000}
+            placeholder="Anything the editor should know: what you care about, what to skip, how you like stories told."
+          />
+        </label>
         <label>
-          Trust these, one per line (optional)
+          <span>
+            Sources to trust <span className="muted">(optional, one per line)</span>
+          </span>
           <textarea value={trusted} onChange={(e) => setTrusted(e.target.value)} rows={3} />
         </label>
         <label>
-          Never use these, one per line (optional)
+          <span>
+            Sources to never use <span className="muted">(optional, one per line)</span>
+          </span>
           <textarea value={blocked} onChange={(e) => setBlocked(e.target.value)} rows={3} />
         </label>
-      </fieldset>
-
-      <label>
-        Brief to the editor (optional)
-        <textarea
-          value={settings.brief}
-          onChange={(e) => set({ brief: e.target.value })}
-          rows={5}
-          maxLength={2000}
-          placeholder="Anything the editor should know: what you care about, what to skip, how you like stories told."
-        />
-      </label>
-
-      <div className="save-bar">
-        <button className="button" disabled={!complete || !unsaved}>
-          Save
-        </button>
-        {!complete ? (
-          <span className="muted">Fill the dashed slots to save.</span>
-        ) : (
-          unsaved && <span className="muted">You have unsaved changes.</span>
-        )}
       </div>
+
+      <SaveBar problem={problem} unsaved={unsaved} savedOnce={savedOnce} />
     </form>
+  );
+}
+
+// Stays at the bottom of the screen, so Save and whether it worked are always in view.
+function SaveBar({ problem, unsaved, savedOnce }: { problem: string | null; unsaved: boolean; savedOnce: boolean }) {
+  const { pending } = useFormStatus();
+  const status = pending
+    ? "Saving…"
+    : problem ??
+      (unsaved ? "You have unsaved changes." : savedOnce ? "Saved. Your next edition will use this paper." : "");
+  return (
+    <div className="save-bar">
+      <button className="button" disabled={pending || !!problem || !unsaved}>
+        Save
+      </button>
+      <span className="muted" role="status">
+        {status}
+      </span>
+    </div>
   );
 }
 

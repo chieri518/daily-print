@@ -96,7 +96,7 @@ The paper has ${settings.pages.length} pages. Each page is split into slots, and
 ${pagePlan(settings)}
 
 Rules:
-- Write in ${settings.language}. Tone: ${TONES[settings.tone]}. Reading level: ${READING_LEVELS[settings.readingLevel]}.
+- Write in English. Tone: ${TONES[settings.tone].guide}. Reading level: ${READING_LEVELS[settings.readingLevel]}.
 - News stories must only use facts from the notes, and must list their sources.
 - Pieces you write yourself, such as editorials and analysis, must say so in their label (e.g. "Editorial").
 - A slot of under ${MAIN_STORY_WORDS} words holds one story. Bigger slots hold a main story and one or two shorter ones.

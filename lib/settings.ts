@@ -129,7 +129,16 @@ export const FEATURES = {
   },
 } satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
 
-export const TONES = { straight: "Straight news", conversational: "Conversational", witty: "Witty" };
+// `guide` tells the editor how to write in that tone.
+export const TONES = {
+  straight: { label: "Straight news", guide: "straight news: neutral and factual" },
+  conversational: { label: "Conversational", guide: "conversational: warm and plain, like explaining to a friend" },
+  witty: { label: "Witty", guide: "witty: light and clever, with the odd joke" },
+  genz: {
+    label: "Gen Z",
+    guide: "Gen Z: casual and playful, with some current slang and a bit of irony, but every fact stays accurate",
+  },
+};
 export const READING_LEVELS = { simple: "Simple", general: "General", expert: "Expert" };
 
 const choice = <T extends object>(options: T) => z.enum(Object.keys(options) as [keyof T & string]);
@@ -155,7 +164,6 @@ export const Settings = z.object({
   location: text(100).min(1),
   pages: z.array(Page).min(1).max(MAX_PAGES), // the first is the front page
   customSections: z.array(Section).max(30),
-  language: text(40).min(1),
   tone: choice(TONES),
   readingLevel: choice(READING_LEVELS),
   trustedSources: z.array(text(100)).max(30),

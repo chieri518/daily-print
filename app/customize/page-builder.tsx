@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Dialog, FeaturePreview, LayoutIcon } from "./parts";
 import defaults from "@/paper.json";
 import {
   area,
@@ -41,6 +42,7 @@ export function PageBuilder({
   const [dragged, setDragged] = useState<{ section: Section; from?: Spot } | null>(null);
   const [over, setOver] = useState<Spot | "list" | null>(null);
   const [picking, setPicking] = useState<Spot | null>(null);
+  const [layoutFor, setLayoutFor] = useState<number | null>(null); // the page whose layout is being chosen
   // The section being added or edited. `original` is its name before editing; empty for a new section.
   const [form, setForm] = useState<{ original: string; title: string; about: string; sources: string } | null>(null);
   const [nameTaken, setNameTaken] = useState(false);
@@ -52,6 +54,11 @@ export function PageBuilder({
   ];
   const placed = new Set(pages.flatMap((p) => p.slots.map((s) => s?.title)));
   const available = sections.filter((s) => !placed.has(s.title));
+  const groups = [
+    { name: "News", sections: available.filter((s) => !s.kind && isPreset(s.title)) },
+    { name: "Puzzles & extras", sections: available.filter((s) => s.kind) },
+    { name: "Your sections", sections: available.filter((s) => !isPreset(s.title)) },
+  ];
 
   // Every change to the pages can be undone.
   const change = (next: Draft[]) => {
@@ -99,6 +106,13 @@ export function PageBuilder({
       return section && fits(section, page, slot.shape) ? section : null;
     });
     change(pages.map((p, i) => (i === page ? { layout, slots } : p)));
+  };
+
+  // Swaps a page with the one next to it. The front page stays first.
+  const movePage = (page: number, by: -1 | 1) => {
+    const next = [...pages];
+    [next[page], next[page + by]] = [next[page + by], next[page]];
+    change(next);
   };
 
   const openForm = (section?: Section) => {
@@ -171,45 +185,58 @@ export function PageBuilder({
             endDrag();
           }}
         >
-          <strong>Sections</strong>
           {dragged?.from && <p className="drop-hint">Drop here to remove</p>}
-          {available.map((s) => (
-            <div
-              key={s.title}
-              className={`chip${dragged?.section === s ? " lifted" : ""}`}
-              title={s.about}
-              draggable
-              onDragStart={() => setDragged({ section: s })}
-              onDragEnd={endDrag}
-            >
-              <span>
-                <span className="handle" aria-hidden>
-                  ⠿
-                </span>{" "}
-                {s.title}
-              </span>
-              <span className="chip-actions">
-                {!s.kind && (
-                  <button type="button" className="link" onClick={() => openForm(s)} aria-label={`Edit ${s.title}`}>
-                    ✎
-                  </button>
-                )}
-                {!isPreset(s.title) && (
-                  <button
-                    type="button"
-                    className="link"
-                    onClick={() => set({ customSections: settings.customSections.filter((c) => c !== s) })}
-                    aria-label={`Delete ${s.title}`}
+          {groups
+            .filter((group) => group.sections.length || group.name === "Your sections")
+            .map((group) => (
+              <div key={group.name} className="palette-group">
+                <span className="palette-heading">{group.name}</span>
+                {group.sections.map((s) => (
+                  <div
+                    key={s.title}
+                    className={`chip${dragged?.section === s ? " lifted" : ""}`}
+                    title={s.about}
+                    draggable
+                    onDragStart={() => setDragged({ section: s })}
+                    onDragEnd={endDrag}
                   >
-                    ×
+                    <span>
+                      <span className="handle" aria-hidden>
+                        ⠿
+                      </span>{" "}
+                      {s.title}
+                    </span>
+                    <span className="chip-actions">
+                      {!s.kind && (
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => openForm(s)}
+                          aria-label={`Edit ${s.title}`}
+                        >
+                          ✎
+                        </button>
+                      )}
+                      {!isPreset(s.title) && (
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => set({ customSections: settings.customSections.filter((c) => c !== s) })}
+                          aria-label={`Delete ${s.title}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {group.name === "Your sections" && (
+                  <button type="button" className="link" onClick={() => openForm()}>
+                    + New section
                   </button>
                 )}
-              </span>
-            </div>
-          ))}
-          <button type="button" className="link" onClick={() => openForm()}>
-            + New section
-          </button>
+              </div>
+            ))}
         </aside>
 
         <div className="sheets">
@@ -267,10 +294,14 @@ export function PageBuilder({
                         {section ? (
                           <>
                             <span className="sheet-section">{section.title}</span>
-                            <span className="sheet-size">
-                              {section.kind ? "Made automatically" : `~${slotWords(i, page.layout, j)} words`}
-                            </span>
-                            <span className="sheet-lines" />
+                            {section.kind ? (
+                              <FeaturePreview kind={section.kind} />
+                            ) : (
+                              <>
+                                <span className="sheet-size">~{slotWords(i, page.layout, j)} words</span>
+                                <span className="sheet-lines" />
+                              </>
+                            )}
                           </>
                         ) : (
                           <span>+ Add section</span>
@@ -282,28 +313,33 @@ export function PageBuilder({
               </div>
               <div className="sheet-controls">
                 <span>Page {i + 1}</span>
-                <span className="layouts">
-                  {Object.entries(LAYOUTS).map(([key, layout]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className="layout-icon"
-                      title={layout.label}
-                      aria-label={layout.label}
-                      aria-pressed={page.layout === key}
-                      style={{ gridTemplate: layout.grid }}
-                      onClick={() => setLayout(i, key as Page["layout"])}
-                    >
-                      {layout.slots.map((_, j) => (
-                        <span key={j} style={{ gridArea: area(j) }} />
-                      ))}
-                    </button>
-                  ))}
-                </span>
+                <button type="button" className="link layout-button" onClick={() => setLayoutFor(i)}>
+                  <LayoutIcon layout={page.layout} /> {LAYOUTS[page.layout].label}
+                </button>
                 {i > 0 && (
-                  <button type="button" className="link" onClick={() => change(pages.filter((_, j) => j !== i))}>
-                    Remove
-                  </button>
+                  <span className="page-actions">
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => movePage(i, -1)}
+                      disabled={i === 1}
+                      aria-label={`Move page ${i + 1} left`}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => movePage(i, 1)}
+                      disabled={i === pages.length - 1}
+                      aria-label={`Move page ${i + 1} right`}
+                    >
+                      →
+                    </button>
+                    <button type="button" className="link" onClick={() => change(pages.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </span>
                 )}
               </div>
             </div>
@@ -346,7 +382,9 @@ export function PageBuilder({
               {isPreset(form.original) && <span className="muted">Ready-made sections keep their name.</span>}
             </label>
             <label>
-              What it covers <span className="muted">(optional)</span>
+              <span>
+                What it covers <span className="muted">(optional)</span>
+              </span>
               <input
                 autoFocus={isPreset(form.original)}
                 placeholder="e.g. home gardening tips and local plant sales"
@@ -356,7 +394,9 @@ export function PageBuilder({
               />
             </label>
             <label>
-              Preferred sources <span className="muted">(optional, separate with commas)</span>
+              <span>
+                Preferred sources <span className="muted">(optional, separate with commas)</span>
+              </span>
               <input
                 placeholder="e.g. Gardenista, The Guardian"
                 value={form.sources}
@@ -372,6 +412,29 @@ export function PageBuilder({
               </button>
             </span>
           </div>
+        </Dialog>
+      )}
+
+      {layoutFor !== null && (
+        <Dialog label={`Layout for page ${layoutFor + 1}`} onClose={() => setLayoutFor(null)}>
+          <strong>Layout for page {layoutFor + 1}</strong>
+          {Object.entries(LAYOUTS).map(([key, layout]) => (
+            <button
+              key={key}
+              type="button"
+              className="layout-choice"
+              aria-pressed={pages[layoutFor].layout === key}
+              onClick={() => {
+                setLayout(layoutFor, key as Page["layout"]);
+                setLayoutFor(null);
+              }}
+            >
+              <LayoutIcon layout={key as Page["layout"]} /> {layout.label}
+            </button>
+          ))}
+          <button type="button" className="link" onClick={() => setLayoutFor(null)}>
+            Cancel
+          </button>
         </Dialog>
       )}
 
@@ -434,19 +497,3 @@ export function PageBuilder({
 }
 
 const isPreset = (title: string) => PRESET_SECTIONS.some((p) => p.title === title);
-
-// A small centered dialog. Clicking outside it or pressing Escape closes it.
-function Dialog({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const close = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [onClose]);
-  return (
-    <div className="picker-backdrop" onClick={onClose}>
-      <div className="picker" role="dialog" aria-label={label} onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
-  );
-}

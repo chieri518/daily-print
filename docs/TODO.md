@@ -40,11 +40,13 @@
 - [x] The user chooses page count and paper size
 - [x] Section order and layout of each page: a Customize page where sections are dragged into slots on page previews
 - [x] Sources to trust or block (as instructions to Claude)
-- [x] Language, tone and reading level
+- [x] Tone and reading level (English only for now)
 - [x] A written "brief to the editor"
 - [ ] Generate a test edition with each layout and check that the text fits
 - [x] Click a slot to choose a section (works on phones and with a keyboard)
-- [ ] Reorder whole pages (today you rebuild them by moving sections)
+- [x] Reorder whole pages
+- [ ] Editions page: front-page thumbnails, failure reason and Try again, progress while writing
+- [ ] Sign-in page: sample front page and a short explanation
 - [ ] Feedback on articles that shapes future editions
 
 ## Future features
@@ -53,3 +55,8 @@
 - [ ] Google Photos: an "N years ago today" photo
 - [ ] Page-turn viewer in the browser
 - [ ] Printer box: prints each morning's edition automatically (see [ARCHITECTURE.md](ARCHITECTURE.md))
+  - [x] Hardware test: the Pi Zero W prints an edition on the P1102w ([PRINTER_SETUP.md](PRINTER_SETUP.md))
+  - [ ] Make the Wi-Fi power-saving fix permanent
+  - [ ] Scheduled editions, made before the reader's print time
+  - [ ] Pairing a printer box with a code from the web app
+  - [ ] Script on the Pi: fetch today's PDF, print it, report the result

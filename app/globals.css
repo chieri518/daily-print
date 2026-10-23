@@ -33,30 +33,44 @@ button { font: inherit; cursor: pointer; }
 .editions { list-style: none; padding: 0; }
 .editions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }
 
-form.settings { display: grid; gap: 1rem; }
 label { display: grid; gap: 0.25rem; font-weight: 600; }
 input, select, textarea { font: inherit; font-weight: normal; padding: 0.45rem; border: 1px solid var(--rule); background: transparent; color: inherit; width: 100%; }
-fieldset { border: 1px solid var(--rule); display: grid; gap: 0.75rem; }
 
 /* Customize */
 .customize { display: grid; gap: 1.25rem; }
-.customize > p { margin: -0.75rem 0 0; }
+.customize p { margin: 0; }
+[hidden] { display: none !important; }
+
+.tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--rule); }
+.tabs button { padding: 0.4rem 0; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); }
+.tabs button[aria-selected="true"] { border-bottom-color: var(--ink); color: var(--ink); font-weight: 600; }
+
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem 1.5rem; }
+.fields .wide { grid-column: 1 / -1; }
+label .muted { font-weight: normal; font-size: 0.8rem; }
+
+.save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem 0; background: var(--paper); border-top: 1px solid var(--rule); }
+
+/* The page builder */
 .builder-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem; }
-.builder-bar .link + .link { margin-left: 0.75rem; }
 .link:disabled { opacity: 0.4; cursor: default; }
-.workspace { display: grid; grid-template-columns: 10rem 1fr; gap: 1rem; align-items: start; }
+.workspace { display: grid; grid-template-columns: 11rem 1fr; gap: 1rem; align-items: start; margin-top: 1rem; }
 .workspace.dragging .sheet-slot * { pointer-events: none; } /* so drag events come from the slot, not its children */
-.palette { display: grid; gap: 0.4rem; position: sticky; top: 1rem; padding: 0.4rem; font-size: 0.85rem; border: 1px dashed transparent; }
+.palette { display: grid; gap: 0.9rem; position: sticky; top: 1rem; padding: 0.4rem; font-size: 0.85rem; border: 1px dashed transparent; }
 .palette.drop-target { border-color: var(--muted); }
 .palette.over { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.palette-group { display: grid; gap: 0.35rem; }
+.palette-heading { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .drop-hint { margin: 0; font-weight: 600; }
 .chip { display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border: 1px solid var(--rule); background: var(--paper); cursor: grab; }
+.chip-actions { display: flex; gap: 0.4rem; }
 .handle { color: var(--muted); }
 .lifted { opacity: 0.35; }
 .new-section { display: grid; gap: 0.75rem; }
-.new-section label .muted { font-weight: normal; font-size: 0.8rem; }
 .dialog-actions { display: flex; gap: 1rem; align-items: center; }
-.sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1rem; }
+input:disabled { opacity: 0.55; }
+
+.sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1.25rem 1rem; }
 .sheet { display: flex; flex-direction: column; gap: 4%; padding: 6%; background: #fff; color: #111; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
 .sheet-masthead { text-align: center; font-size: 1.4rem; line-height: 1.1; border-bottom: 3px double #111; padding-bottom: 0.2rem; }
 .sheet-slots { flex: 1; min-height: 0; display: grid; gap: 0.4rem; }
@@ -71,23 +85,51 @@ fieldset { border: 1px solid var(--rule); display: grid; gap: 0.75rem; }
 .sheet-section { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #111; }
 .sheet-size { font-size: 0.5rem; color: #888; }
 .sheet-lines { flex: 1; background: repeating-linear-gradient(#ccc 0 1px, transparent 1px 5px); }
-.sheet-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.4rem; font-size: 0.8rem; }
-.layouts { display: flex; gap: 0.25rem; }
-.layout-icon { display: grid; gap: 2px; width: 1.4rem; height: 1.8rem; padding: 2px; border: 1px solid var(--muted); background: none; }
-.layout-icon span { min-height: 3px; background: var(--muted); }
-.layout-icon[aria-pressed="true"] { border: 2px solid var(--ink); }
-.layout-icon[aria-pressed="true"] span { background: var(--ink); }
+
+/* Sketches of the weather and puzzles in their slots */
+.mini-weather { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid #111; font-size: 0.7rem; text-align: center; }
+.mini-weather span + span { border-left: 1px solid #111; }
+.mini-sudoku, .mini-crossword { align-self: center; width: min(75%, 4.5rem); aspect-ratio: 1; margin-top: 0.2rem; }
+.mini-sudoku {
+  border: 1.5px solid #111;
+  background-image: linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px),
+    linear-gradient(#bbb 1px, transparent 1px), linear-gradient(90deg, #bbb 1px, transparent 1px);
+  background-size: 33.34% 33.34%, 33.34% 33.34%, 11.12% 11.12%, 11.12% 11.12%;
+}
+.mini-crossword { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid #111; }
+.mini-crossword span { border: 0.5px solid #111; }
+.mini-crossword .black { background: #111; }
+.mini-letters { font-size: 0.55rem; letter-spacing: 0.3em; line-height: 1.5; word-break: break-all; color: #333; }
+.mini-quiz { display: grid; gap: 0.15rem; font-size: 0.55rem; }
+.mini-quiz span { border-bottom: 1px solid #ccc; }
+
+.sheet-controls { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; margin-top: 0.4rem; font-size: 0.8rem; }
+.layout-button { display: inline-flex; gap: 0.35rem; align-items: center; }
+.page-actions { display: flex; gap: 0.6rem; }
+.layout-icon { display: inline-grid; gap: 1px; width: 0.9rem; height: 1.15rem; padding: 1px; border: 1px solid currentColor; }
+.layout-icon span { min-height: 2px; background: currentColor; opacity: 0.6; }
+.layout-choice { grid-template-columns: auto 1fr; align-items: center; gap: 0.6rem; }
+.layout-choice[aria-pressed="true"] { font-weight: 700; }
 .add-page { min-height: 8rem; border: 1px dashed var(--rule); background: none; color: inherit; }
+
 .picker-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 0.35); z-index: 10; }
 .picker { display: grid; gap: 0.25rem; width: min(24rem, 100%); max-height: 80vh; overflow: auto; padding: 1rem; background: var(--paper); border: 1px solid var(--rule); }
 .picker button:not(.link):not(.button) { display: grid; text-align: left; padding: 0.4rem 0.5rem; border: 1px solid transparent; background: none; color: inherit; }
 .picker button:not(.link):not(.button):hover, .picker button:not(.link):not(.button):focus-visible { border-color: var(--rule); }
 .picker .muted { font-size: 0.72rem; line-height: 1.3; }
-.save-bar { display: flex; gap: 0.75rem; align-items: center; }
 
 @media (max-width: 40rem) {
   .workspace { grid-template-columns: 1fr; }
   .palette { position: static; }
 }
-.chip-actions { display: flex; gap: 0.4rem; }
-input:disabled { opacity: 0.55; }
+.palette-group .link { justify-self: start; }
+
+/* Typeface cards */
+.typefaces { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.75rem; margin: 0; padding: 0; border: 0; }
+.typefaces legend { padding: 0; margin-bottom: 0.25rem; font-weight: 600; }
+.typeface { position: relative; display: grid; gap: 0.3rem; padding: 0.9rem; font-weight: normal; background: #fff; color: #111; border: 1px solid #ccc; cursor: pointer; }
+.typeface:has(input:checked) { outline: 2px solid var(--ink); outline-offset: 1px; }
+.typeface input { position: absolute; right: 0.9rem; bottom: 0.9rem; width: auto; margin: 0; }
+.typeface-masthead { font-size: 1.6rem; line-height: 1.1; border-bottom: 3px double #111; padding-bottom: 0.2rem; }
+.typeface-headline { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+.typeface .muted { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }

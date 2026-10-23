@@ -160,3 +160,34 @@ Based on common drag-and-drop guidance: show what can be dragged and where it ca
 | Yesterday's answers | No longer a section of its own. Each puzzle prints yesterday's answers below it: the News Quiz answers, the Sudoku solution (small grid) and the Crossword answers. Left out when there was no puzzle yesterday | The Word Search has no answers, because its words are already listed |
 | Default paper | Page 2 is now Tech, Opinion and Business. Page 4 is Sudoku, Word Search, News Quiz and On This Day | Replaces the old answers slot |
 | Sudoku size | Squares are 2em again so the puzzle and yesterday's solution fit in a quarter page | |
+
+## 2026-10-23: Printer box hardware works
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Hardware | **Raspberry Pi Zero W** connected by USB to an **HP LaserJet Pro P1102w** | Tested: it printed a full edition. Setup in [PRINTER_SETUP.md](PRINTER_SETUP.md) |
+| Driver | CUPS with the open-source **foo2zjs** driver | HP's own driver needs a plugin that doesn't run on the Pi Zero |
+| Paper | One side per sheet, so 4 sheets for a 4-page edition | The P1102w can't print both sides on its own |
+| Where editions are made | On Vercel, with the Anthropic API key | The Pi Zero is too weak to make editions, and the owner's computer sleeps. The Pi will only download and print |
+| Next | Paused. The owner is going back to the web app's look and feel first | Next steps for the box are in [TODO.md](TODO.md) |
+
+## 2026-10-23: Customize page, round 3
+
+From a review of the whole app. The owner chose to improve the Customize page first.
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Tabs | **Pages**, **Paper & style**, and **Writing & sources**, with settings in a compact grid | The page was one long form |
+| Saving | A save bar stays at the bottom of the screen. It says why Save is off, "You have unsaved changes", or "Saved". Saving no longer reloads the page | The "Saved" message used to appear at the top, out of view |
+| Layouts | Each page shows its layout's name. Clicking it opens a list of layouts with small drawings | Replaces six unlabeled icons |
+| Sections list | Grouped into News, Puzzles & extras, and Your sections | |
+| Slot previews | Weather and puzzle slots show a small sketch (forecast row, sudoku grid, crossword, letters, quiz lines) instead of "Made automatically" | |
+| Page order | ← and → move a page. The front page stays first | |
+
+## 2026-10-23: Typeface cards, Gen Z tone, English only
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Typeface | Chosen from three cards that show the paper's name, a headline and body text in each typeface | Replaces a dropdown of names |
+| Tone | Added **Gen Z**: casual and playful, with some current slang, but facts stay accurate. Each tone now carries a short guide for the editor | |
+| Language | **English only.** The language setting is removed | The owner asked for English, Chinese, Spanish and Japanese, or English only if that was hard. Chinese and Japanese need different fonts, new puzzles (the crossword and word search use A–Z), translated print labels and new word counts. Spanish alone would be easy; revisit later |

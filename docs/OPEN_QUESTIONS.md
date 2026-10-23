@@ -19,7 +19,7 @@
 ## Customization
 
 - **Enforcing sources:** blocked sources are only an instruction to Claude. The API's web search can block domains for real, but readers may type names ("The Daily Mail") rather than domains. Is the instruction enough?
-- **Other languages:** the masthead date, footer and hyphenation are still in English. Translate them when someone uses another language.
+- **Other languages:** the paper is English only for now. Spanish would be easy to add. Chinese and Japanese need fonts with their characters, different puzzles, translated print labels and new word counts.
 - **More layouts:** are four enough? Should readers be able to resize slots?
 - **Word counts per slot:** measured with sample text in the Classic typeface at 10pt. Other typefaces and real headlines may fit more or less. Check against real editions.
 
@@ -30,7 +30,6 @@
 
 ## Printing
 
-- **Hardware:** a Raspberry Pi, or something else? Which printer? Duplex (two-sided) printing matters for a 4-page paper.
-- **Print setup:** use CUPS on the Pi, or a printer with its own network or cloud printing?
+- **Paper use:** the P1102w only prints one side at a time, so a 4-page edition uses 4 sheets. Is that OK, or should the paper fit on fewer pages?
 - **Pairing:** how does a reader link a printer box to their account? For example, with a code shown in the web app.
 - **Missed mornings:** what if the box is offline or the printer is out of paper? Print late, skip that day, or notify the reader?

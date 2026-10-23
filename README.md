@@ -42,7 +42,7 @@ Requires Node 24 or later.
 | File | What it does |
 |---|---|
 | [app/](app/) | Web app pages: editions archive, sign-in, PDF links |
-| [app/customize/](app/customize/) | The Customize page. `page-builder.tsx` is the page previews where sections are dragged or clicked into slots |
+| [app/customize/](app/customize/) | The Customize page: tabs and save bar (`customizer.tsx`), and the page builder where sections are dragged or clicked into slots (`page-builder.tsx`) |
 | [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start an edition |
 | [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, print the PDF and save it |
 | [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, page layouts, sections, templates) and the rules for valid settings |
@@ -65,3 +65,4 @@ Requires Node 24 or later.
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Your preferences and the decisions made so far |
 | [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) | Unknowns still to resolve |
 | [docs/TODO.md](docs/TODO.md) | Next steps, milestones and future features |
+| [docs/PRINTER_SETUP.md](docs/PRINTER_SETUP.md) | How to set up the Raspberry Pi printer box |
