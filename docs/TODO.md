@@ -34,11 +34,14 @@
 
 ## Milestone 3: More customization
 
-- [ ] The user chooses page count and paper size
-- [ ] Section order and layout of each page
-- [ ] Sources to trust or block
-- [ ] Language, tone and reading level
-- [ ] A written "brief to the editor"
+- [x] The user chooses page count and paper size
+- [x] Section order and layout of each page: a Customize page where sections are dragged into slots on page previews
+- [x] Sources to trust or block (as instructions to Claude)
+- [x] Language, tone and reading level
+- [x] A written "brief to the editor"
+- [ ] Generate a test edition with each layout and check that the text fits
+- [ ] Drag and drop on phones (it doesn't work with touch)
+- [ ] Reorder whole pages (today you rebuild them by moving sections)
 - [ ] Feedback on articles that shapes future editions
 
 ## Future features

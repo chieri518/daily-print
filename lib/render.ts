@@ -18,12 +18,13 @@ export async function renderPdf(html: string) {
   }
 }
 
-// Runs in the browser: shrinks the text on each page until it fits, and returns the pages that still don't.
+// Runs in the browser: shrinks the text on each page until every slot fits, and returns the pages that still don't.
 async function shrinkToFit() {
   await document.fonts.ready;
   const overflowing: number[] = [];
   document.querySelectorAll<HTMLElement>(".content").forEach((content, i) => {
-    const tooTall = () => content.scrollHeight > content.clientHeight;
+    const slots = [...content.querySelectorAll<HTMLElement>(".slot")];
+    const tooTall = () => slots.some((slot) => slot.scrollHeight > slot.clientHeight);
     for (let size = 9.75; tooTall() && size >= 7.5; size -= 0.25) content.style.fontSize = `${size}pt`;
     if (tooTall()) overflowing.push(i + 1);
   });

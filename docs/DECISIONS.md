@@ -70,3 +70,30 @@ This file records the owner's stated preferences and the decisions made from the
 | Local testing | `USE_CLAUDE_CODE=1` runs Claude through the Claude Code CLI on the owner's Claude subscription instead of the API | For personal testing on the owner's machine only, until the owner is ready to publish. Works with `npm run paper` and with the web app in `npm run dev` |
 | Deployed app | Always uses `ANTHROPIC_API_KEY` | A subscription login isn't allowed in a deployed or multi-user app |
 | Differences | Claude Code uses its own web search tools and the `opus` model alias, which may be a different Opus version than the API's `claude-opus-5-5`. The cost it reports is an estimate of the API price | Compare a few editions from both before publishing |
+
+## 2026-10-23: More customization (Milestone 3, first version)
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Pages | The front page is always first. After it, the reader has a list of 1–7 pages, each with a title, what it covers and a layout. **Drag and drop** reorders them | Page count is the number of pages in the list plus the front page. Built with the browser's own drag and drop, so reordering doesn't work on phones yet |
+| Opinion page | Now an ordinary page in the list, so readers can move or remove it | Pieces the agent writes itself must still say so in their label |
+| Page layouts | Three for now: **Lead story** (one main story, two below), **Two columns** (four short stories) and **Stacked** (2–4 stories in full width) | Each layout tells the editor how many stories to write and how long. The front page layout is fixed |
+| Paper size | US Letter or A4 | |
+| Writing | Language (free text), tone (straight news, conversational, witty) and reading level (simple, general, expert) | Labels outside the stories, such as the date and footer, are still in English |
+| Sources | Lists of sources to trust and to never use | Only instructions to Claude for now; nothing enforces them |
+| Brief to the editor | Free text, up to 2,000 characters, given to both the research and writing steps | |
+| Old settings | Settings saved in the older format are replaced by the defaults in paper.json | Only the owner had saved settings |
+
+## 2026-10-23: Customize page, built like a page builder
+
+Replaces the page list from the previous entry.
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Name | The Settings tab is now **Customize** (`/customize`) | |
+| Editing | Readers see their paper as small page previews in their typeface. They **drag sections into slots** on each page, between slots to move or swap, and back to the list to remove | Like a website builder (Wix), but much simpler. Still no touch support |
+| Page layouts | Each page has a layout of 1–3 slots: **One section**, **Top + two below**, **Two halves**, **Two columns** | The slot size sets how many words the editor writes |
+| Front page | Editable like the others, below the masthead | The illustration sits in the first slot on the front page |
+| Sections | A list of ready-made sections (Top Stories, Local News, World, Business, Tech, Science, Sports, Culture, Weather, Opinion, On This Day) plus sections the reader makes. Each section can be used once | |
+| Templates | General, Local and Tech digest. Picking one replaces the reader's pages | |
+| Saving | Every slot must be filled before saving | |

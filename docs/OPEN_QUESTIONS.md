@@ -18,6 +18,13 @@ Questions marked **[Next]** need an answer before adding illustrations.
 - **Step length on Vercel:** each workflow step runs in one function call. Will the research step (web search) finish within the plan's function time limit? Measure it on the first deployed run.
 - **Fonts on Vercel:** the PDF loads Google Fonts over the network while rendering. Check the deployed PDFs use the right typefaces.
 
+## Customization
+
+- **Enforcing sources:** blocked sources are only an instruction to Claude. The API's web search can block domains for real, but readers may type names ("The Daily Mail") rather than domains. Is the instruction enough?
+- **Other languages:** the masthead date, footer and hyphenation are still in English. Translate them when someone uses another language.
+- **More layouts:** are four enough? Should readers be able to resize slots?
+- **Word counts per slot:** the word budgets in `LAYOUTS` are estimates. Check them against real editions.
+
 ## Legal
 
 - Rules for quoting and summarizing news: how long a summary can be, how to attribute it, and whether to show links or QR codes in print.

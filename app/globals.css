@@ -16,12 +16,12 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.5 var(--body), Georgia, serif; }
-main { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 a { color: inherit; }
 h1, h2 { font-family: var(--headline), Georgia, serif; line-height: 1.15; }
 .muted { color: var(--muted); }
 
-.masthead { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; text-align: center; border-bottom: 3px double var(--rule); }
+.masthead { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; text-align: center; border-bottom: 3px double var(--rule); }
 .masthead > a { font-family: var(--masthead), serif; font-size: 3.2rem; text-decoration: none; }
 .masthead nav { display: flex; justify-content: center; gap: 1.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
@@ -35,5 +35,30 @@ button { font: inherit; cursor: pointer; }
 
 form.settings { display: grid; gap: 1rem; }
 label { display: grid; gap: 0.25rem; font-weight: 600; }
-input, select { font: inherit; font-weight: normal; padding: 0.45rem; border: 1px solid var(--rule); background: transparent; color: inherit; width: 100%; }
+input, select, textarea { font: inherit; font-weight: normal; padding: 0.45rem; border: 1px solid var(--rule); background: transparent; color: inherit; width: 100%; }
 fieldset { border: 1px solid var(--rule); display: grid; gap: 0.75rem; }
+
+/* Customize */
+.customize { display: grid; gap: 1.25rem; }
+.templates { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.workspace { display: grid; grid-template-columns: 10rem 1fr; gap: 1rem; align-items: start; }
+.palette { display: grid; gap: 0.4rem; position: sticky; top: 1rem; font-size: 0.85rem; }
+.palette p { margin: 0; }
+.chip { display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border: 1px solid var(--rule); background: var(--paper); cursor: grab; }
+.sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 1rem; }
+.sheet { display: flex; flex-direction: column; gap: 4%; padding: 6%; background: #fff; color: #111; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+.sheet-masthead { text-align: center; font-size: 1.4rem; line-height: 1.1; border-bottom: 3px double #111; padding-bottom: 0.2rem; }
+.sheet-slots { flex: 1; min-height: 0; display: grid; gap: 0.4rem; }
+.sheet-slot { display: flex; flex-direction: column; gap: 0.2rem; min-height: 0; overflow: hidden; padding: 0.25rem; border: 1px solid #ddd; cursor: grab; }
+.sheet-slot.empty { align-items: center; justify-content: center; border: 1px dashed #999; color: #999; font-size: 0.7rem; cursor: default; }
+.sheet-section { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #111; }
+.sheet-headline { font-size: 0.7rem; font-weight: 700; line-height: 1.15; }
+.sheet-lines { flex: 1; background: repeating-linear-gradient(#ccc 0 1px, transparent 1px 5px); }
+.sheet-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.4rem; font-size: 0.8rem; }
+.sheet-controls select { width: auto; padding: 0.15rem; }
+.add-page { min-height: 8rem; border: 1px dashed var(--rule); background: none; color: inherit; }
+
+@media (max-width: 40rem) {
+  .workspace { grid-template-columns: 1fr; }
+  .palette { position: static; }
+}

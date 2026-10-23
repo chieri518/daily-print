@@ -1,6 +1,7 @@
-import { research, write, type Edition, type Settings } from "../lib/editor.ts";
+import { research, write, type Edition } from "../lib/editor.ts";
 import { layout } from "../lib/layout.ts";
 import { renderPdf } from "../lib/render.ts";
+import type { Settings } from "../lib/settings.ts";
 import { admin } from "../lib/supabase/admin.ts";
 
 // Writes one edition and saves its PDF. Each step is saved as it finishes, so a crash resumes where it stopped.

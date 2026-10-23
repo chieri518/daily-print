@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {reader && (
             <nav>
               <Link href="/">Editions</Link>
-              <Link href="/settings">Settings</Link>
+              <Link href="/customize">Customize</Link>
               <form action={signOut}>
                 <button className="link">Sign out</button>
               </form>

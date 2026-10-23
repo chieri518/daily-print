@@ -41,10 +41,12 @@ Requires Node 24 or later.
 
 | File | What it does |
 |---|---|
-| [app/](app/) | Web app pages: editions archive, settings, sign-in, PDF links |
+| [app/](app/) | Web app pages: editions archive, sign-in, PDF links |
+| [app/customize/](app/customize/) | The Customize page: drag sections into slots on page previews |
 | [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start an edition |
 | [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, print the PDF and save it |
-| [lib/editor.ts](lib/editor.ts) | The agent: researches with web search, then writes the edition. Also the `Settings` schema |
+| [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, page layouts, sections, templates) and the rules for valid settings |
+| [lib/editor.ts](lib/editor.ts) | The agent: researches with web search, then writes the edition |
 | [lib/claude.ts](lib/claude.ts) | Calls Claude and works out each call's cost |
 | [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts) | Newspaper layout and typefaces |
 | [lib/render.ts](lib/render.ts) | Prints the layout to PDF with headless Chromium, shrinking text that doesn't fit |

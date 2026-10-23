@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
-import { Settings } from "@/lib/editor";
+import { Settings } from "@/lib/settings";
 import { canGenerate, createClient, getReader, loadSettings } from "@/lib/supabase/server";
 import { today } from "@/lib/today";
 import { makeEdition } from "@/workflows/edition";
@@ -34,15 +34,10 @@ export async function signOut() {
 
 export async function saveSettings(form: FormData) {
   const reader = await requireReader();
-  const settings = Settings.parse({
-    name: form.get("name"),
-    typeface: form.get("typeface"),
-    location: form.get("location"),
-    sections: [0, 1].map((i) => ({ title: form.get(`title${i}`), about: form.get(`about${i}`) })),
-  });
+  const settings = Settings.parse(JSON.parse(String(form.get("settings"))));
   const { error } = await reader.supabase.from("papers").upsert({ user_id: reader.id, settings, updated_at: new Date().toISOString() });
   if (error) throw error;
-  redirect("/settings?saved=1");
+  redirect("/customize?saved=1");
 }
 
 // Starts today's edition in the reader's time zone. It is written in the background and appears in the archive when ready.

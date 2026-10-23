@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import defaults from "../../paper.json" with { type: "json" };
-import { Settings } from "../editor.ts";
+import { Settings } from "../settings.ts";
 
 // A Supabase client that acts as the signed-in reader, so row-level security applies.
 export async function createClient() {
@@ -34,8 +34,9 @@ export function canGenerate(reader: Reader) {
   return (process.env.ALLOWED_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).includes(reader.email.toLowerCase());
 }
 
-// The reader's saved settings, or the defaults from paper.json.
+// The reader's saved settings, or the defaults from paper.json if they have none (or saved an older format).
 export async function loadSettings(reader: Reader) {
   const { data } = await reader.supabase.from("papers").select("settings").eq("user_id", reader.id).maybeSingle();
-  return Settings.parse(data?.settings ?? defaults);
+  const saved = Settings.safeParse(data?.settings);
+  return saved.success ? saved.data : Settings.parse(defaults);
 }

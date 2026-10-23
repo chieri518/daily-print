@@ -1,30 +1,31 @@
-import type { Edition, Settings, Story } from "./editor.ts";
+import type { Edition, Story } from "./editor.ts";
 import { css } from "./paper-css.ts";
-
-// Font sets readers can choose from. All are free Google Fonts.
-const TYPEFACES: Record<Settings["typeface"], { masthead: string; headline: string; body: string }> = {
-  classic: { masthead: "UnifrakturMaguntia", headline: "Playfair Display", body: "Source Serif 4" },
-  caslon: { masthead: "Libre Caslon Display", headline: "Libre Caslon Text", body: "Libre Caslon Text" },
-  bodoni: { masthead: "Bodoni Moda", headline: "Bodoni Moda", body: "Newsreader" },
-};
+import { fontsUrl, LAYOUTS, PAPER_SIZES, TYPEFACES, type Settings } from "./settings.ts";
 
 // Builds the newspaper as one HTML document, one <section> per printed page.
 export function layout(settings: Settings, date: string, edition: Edition) {
   const fonts = TYPEFACES[settings.typeface];
-
-  const [lead, ...others] = edition.frontPage;
-  const frontPage = `
+  const size = PAPER_SIZES[settings.paperSize];
+  const masthead = `
     <header class="masthead">
       <h1>${esc(settings.name)}</h1>
       <div class="meta"><span>${esc(date)}</span><span>${esc(settings.location)}</span><span>${esc(edition.weather)}</span></div>
-    </header>
-    ${story(lead, "lead", `<figure class="illustration"><figcaption>Illustration: ${esc(edition.illustration)}</figcaption></figure>`)}
-    <div class="pair">${others.map((s) => story(s)).join("")}</div>`;
+    </header>`;
+  const illustration = `<figure class="illustration"><figcaption>Illustration: ${esc(edition.illustration)}</figcaption></figure>`;
 
-  const pages = [
-    frontPage,
-    ...edition.pages.map((p) => `<h1 class="section-title">${esc(p.title)}</h1>${p.stories.map((s) => story(s)).join("")}`),
-  ];
+  const pages = settings.pages.map((page, i) => {
+    const { grid, slots } = LAYOUTS[page.layout];
+    const filled = page.slots.map((section, j) => {
+      const [lead, ...others] = edition.pages[i]?.slots[j]?.stories ?? [];
+      const big = slots[j].words >= 300;
+      return `<div class="slot" style="grid-area: ${"abc"[j]}; --columns: ${slots[j].columns}">
+        <h3 class="section-title">${esc(section.title)}</h3>
+        ${lead ? story(lead, big ? "lead" : "", i === 0 && j === 0 ? illustration : "") : ""}
+        ${others.map((s) => story(s)).join("")}
+      </div>`;
+    });
+    return `${i === 0 ? masthead : ""}<div class="slots" style='grid-template: ${grid}'>${filled.join("")}</div>`;
+  });
 
   return `<!doctype html>
 <html lang="en">
@@ -33,6 +34,7 @@ export function layout(settings: Settings, date: string, edition: Edition) {
   <link rel="stylesheet" href="${fontsUrl(fonts)}">
   <style>:root { --masthead: "${fonts.masthead}"; --headline: "${fonts.headline}"; --body: "${fonts.body}"; }</style>
   <style>${css}</style>
+  <style>@page { size: ${size.width} ${size.height}; } .page { width: ${size.width}; height: ${size.height}; }</style>
 </head>
 <body>
 ${pages
@@ -58,14 +60,6 @@ function story(s: Story, className = "", figure = "") {
       ${s.sources.length ? `<p class="sources">Sources: ${s.sources.map((src) => esc(src.name)).join(", ")}</p>` : ""}
     </div>
   </article>`;
-}
-
-// Loads each font once, with the weights its role needs (later roles win if a font is reused).
-function fontsUrl(fonts: { masthead: string; headline: string; body: string }) {
-  const axes = { [fonts.masthead]: "", [fonts.headline]: ":wght@700" };
-  axes[fonts.body] = ":ital,wght@0,400;0,700;1,400";
-  const families = Object.entries(axes).map(([name, axis]) => `family=${name.replaceAll(" ", "+")}${axis}`);
-  return `https://fonts.googleapis.com/css2?${families.join("&")}&display=block`;
 }
 
 // Escapes text from Claude so it can't break the HTML.

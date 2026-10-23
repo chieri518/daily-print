@@ -2,9 +2,10 @@
 // Output goes to editions/YYYY-MM-DD.pdf (+ .json with the text and cost).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { useClaudeCode } from "../lib/claude.ts";
-import { research, Settings, write } from "../lib/editor.ts";
+import { research, write } from "../lib/editor.ts";
 import { layout } from "../lib/layout.ts";
 import { renderPdf } from "../lib/render.ts";
+import { Settings } from "../lib/settings.ts";
 import { today } from "../lib/today.ts";
 
 const settings = Settings.parse(JSON.parse(readFileSync("paper.json", "utf8")));

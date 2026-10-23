@@ -1,9 +1,38 @@
 {
   "name": "The Morning Edition",
   "typeface": "classic",
+  "paperSize": "letter",
   "location": "San Francisco Bay Area",
-  "sections": [
-    { "title": "Startups & Tech", "about": "startups, venture funding, AI and big tech" },
-    { "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }
-  ]
+  "pages": [
+    {
+      "layout": "topTwo",
+      "slots": [
+        { "title": "Top Stories", "about": "the most important stories of the day, from any topic" },
+        { "title": "Weather", "about": "a detailed forecast for the reader's area for today and the next few days" },
+        { "title": "On This Day", "about": "a short history piece about something that happened on this date" }
+      ]
+    },
+    {
+      "layout": "single",
+      "slots": [{ "title": "Tech", "about": "startups, venture funding, AI and big tech" }]
+    },
+    {
+      "layout": "single",
+      "slots": [{ "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }]
+    },
+    {
+      "layout": "columns",
+      "slots": [
+        { "title": "Opinion", "about": "an editorial written by the editor about a story in this edition" },
+        { "title": "Business", "about": "markets, companies and the economy" }
+      ]
+    }
+  ],
+  "customSections": [{ "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }],
+  "language": "English",
+  "tone": "straight",
+  "readingLevel": "general",
+  "trustedSources": [],
+  "blockedSources": [],
+  "brief": ""
 }
