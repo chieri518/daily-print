@@ -5,26 +5,34 @@
   "location": "San Francisco Bay Area",
   "pages": [
     {
-      "layout": "topTwo",
+      "layout": "stripMain",
       "slots": [
-        { "title": "Top Stories", "about": "the most important stories of the day, from any topic" },
-        { "title": "Weather", "about": "a detailed forecast for the reader's area for today and the next few days" },
-        { "title": "On This Day", "about": "a short history piece about something that happened on this date" }
+        { "title": "Weather", "about": "a five-day forecast, and whether to bring an umbrella or a jacket", "kind": "weather" },
+        { "title": "Top Stories", "about": "the most important stories of the day, from any topic" }
       ]
     },
     {
-      "layout": "single",
-      "slots": [{ "title": "Tech", "about": "startups, venture funding, AI and big tech" }]
-    },
-    {
-      "layout": "single",
-      "slots": [{ "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }]
+      "layout": "topTwo",
+      "slots": [
+        { "title": "Tech", "about": "startups, venture funding, AI and big tech" },
+        { "title": "Opinion", "about": "an editorial written by the editor about a story in this edition" },
+        { "title": "Business", "about": "markets, companies and the economy" }
+      ]
     },
     {
       "layout": "columns",
       "slots": [
-        { "title": "Opinion", "about": "an editorial written by the editor about a story in this edition" },
-        { "title": "Business", "about": "markets, companies and the economy" }
+        { "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" },
+        { "title": "Mini Crossword", "about": "a small crossword with clues from today's stories", "kind": "crossword" }
+      ]
+    },
+    {
+      "layout": "quarters",
+      "slots": [
+        { "title": "Sudoku", "about": "a sudoku puzzle", "kind": "sudoku" },
+        { "title": "Word Search", "about": "words from today's stories hidden in a grid", "kind": "wordSearch" },
+        { "title": "News Quiz", "about": "five questions about today's stories", "kind": "trivia" },
+        { "title": "On This Day", "about": "a short history piece about something that happened on this date" }
       ]
     }
   ],

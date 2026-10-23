@@ -5,7 +5,12 @@ import { z } from "zod";
 // The fonts behind each typeface. All are free Google Fonts.
 export const TYPEFACES = {
   classic: { label: "Classic", masthead: "UnifrakturMaguntia", headline: "Playfair Display", body: "Source Serif 4" },
-  caslon: { label: "Caslon", masthead: "Libre Caslon Display", headline: "Libre Caslon Text", body: "Libre Caslon Text" },
+  caslon: {
+    label: "Caslon",
+    masthead: "Libre Caslon Display",
+    headline: "Libre Caslon Text",
+    body: "Libre Caslon Text",
+  },
   bodoni: { label: "Bodoni", masthead: "Bodoni Moda", headline: "Bodoni Moda", body: "Newsreader" },
 };
 
@@ -22,21 +27,107 @@ export const PAPER_SIZES = {
   a4: { label: "A4", width: "210mm", height: "297mm" },
 };
 
-// Each page is a CSS grid of slots, filled in order. `words` is how much text fits in a slot on an inside page,
-// and `columns` is how many text columns its stories use.
+export type Shape = "full" | "wide" | "tall" | "quarter" | "strip";
+
+// Each page is a CSS grid of slots, filled in order (grid areas a, b, c, d). For each slot:
+// - shape: decides which sections fit (see `fits`)
+// - words, frontWords: about how many words fit on an inside page and on the front page (below the masthead, and next to
+//   the illustration in the first slot), measured at 10pt with a 10% margin
+// - columns: how many text columns its stories use
 export const LAYOUTS = {
-  single: { label: "One section", grid: `"a" 1fr / 1fr`, slots: [{ words: 650, columns: 3 }] },
+  single: {
+    label: "One section",
+    grid: `"a" 1fr / 1fr`,
+    slots: [{ shape: "full", words: 690, frontWords: 400, columns: 3 }],
+  },
   topTwo: {
     label: "Top + two below",
     grid: `"a a" 3fr "b c" 2fr / 1fr 1fr`,
-    slots: [{ words: 380, columns: 3 }, { words: 130, columns: 2 }, { words: 130, columns: 2 }],
+    slots: [
+      { shape: "wide", words: 280, frontWords: 170, columns: 3 },
+      { shape: "quarter", words: 120, frontWords: 90, columns: 2 },
+      { shape: "quarter", words: 120, frontWords: 90, columns: 2 },
+    ],
   },
-  halves: { label: "Two halves", grid: `"a" 1fr "b" 1fr / 1fr`, slots: [{ words: 320, columns: 3 }, { words: 320, columns: 3 }] },
-  columns: { label: "Two columns", grid: `"a b" 1fr / 1fr 1fr`, slots: [{ words: 320, columns: 2 }, { words: 320, columns: 2 }] },
-};
+  halves: {
+    label: "Two halves",
+    grid: `"a" 1fr "b" 1fr / 1fr`,
+    slots: [
+      { shape: "wide", words: 220, frontWords: 100, columns: 3 },
+      { shape: "wide", words: 220, frontWords: 220, columns: 3 },
+    ],
+  },
+  columns: {
+    label: "Two columns",
+    grid: `"a b" 1fr / 1fr 1fr`,
+    slots: [
+      { shape: "tall", words: 320, frontWords: 220, columns: 2 },
+      { shape: "tall", words: 320, frontWords: 260, columns: 2 },
+    ],
+  },
+  quarters: {
+    label: "Four quarters",
+    grid: `"a b" 1fr "c d" 1fr / 1fr 1fr`,
+    slots: [
+      { shape: "quarter", words: 150, frontWords: 50, columns: 2 },
+      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
+      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
+      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
+    ],
+  },
+  stripMain: {
+    label: "Weather strip + main",
+    grid: `"a" auto "b" 1fr / 1fr`,
+    slots: [
+      { shape: "strip", words: 0, frontWords: 0, columns: 3 },
+      { shape: "full", words: 480, frontWords: 220, columns: 3 },
+    ],
+  },
+} satisfies Record<
+  string,
+  { label: string; grid: string; slots: { shape: Shape; words: number; frontWords: number; columns: number }[] }
+>;
 
-// The masthead takes about a third of the front page.
-export const FRONT_PAGE_SPACE = 0.65;
+// Grid area name of a slot.
+export const area = (slot: number) => "abcd"[slot];
+
+// Slots with at least this many words hold a main story and shorter ones. Smaller slots hold one story.
+export const MAIN_STORY_WORDS = 250;
+
+export function slotWords(page: number, layout: keyof typeof LAYOUTS, slot: number) {
+  const s = LAYOUTS[layout].slots[slot];
+  return page === 0 ? s.frontWords : s.words;
+}
+
+// Sections that aren't stories. Each has a fixed design, so it needs a slot of the right shape.
+// Puzzles stay inside the paper; only the weather can go on the front page.
+export const FEATURES = {
+  weather: {
+    title: "Weather",
+    about: "a five-day forecast, and whether to bring an umbrella or a jacket",
+    shapes: ["strip", "wide", "full"],
+    frontPage: true,
+  },
+  crossword: {
+    title: "Mini Crossword",
+    about: "a small crossword with clues from today's stories",
+    shapes: ["wide", "tall", "full"],
+    frontPage: false,
+  },
+  sudoku: { title: "Sudoku", about: "a sudoku puzzle", shapes: ["quarter", "wide", "tall", "full"], frontPage: false },
+  wordSearch: {
+    title: "Word Search",
+    about: "words from today's stories hidden in a grid",
+    shapes: ["quarter", "wide", "tall", "full"],
+    frontPage: false,
+  },
+  trivia: {
+    title: "News Quiz",
+    about: "five questions about today's stories",
+    shapes: ["quarter", "wide", "tall", "full"],
+    frontPage: false,
+  },
+} satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
 
 export const TONES = { straight: "Straight news", conversational: "Conversational", witty: "Witty" };
 export const READING_LEVELS = { simple: "Simple", general: "General", expert: "Expert" };
@@ -44,7 +135,12 @@ export const READING_LEVELS = { simple: "Simple", general: "General", expert: "E
 const choice = <T extends object>(options: T) => z.enum(Object.keys(options) as [keyof T & string]);
 const text = (max: number) => z.string().trim().max(max);
 
-export const Section = z.object({ title: text(40).min(1), about: text(300).min(1) });
+export const Section = z.object({
+  title: text(40).min(1),
+  about: text(300).min(1),
+  sources: z.array(text(100)).max(10).optional(), // preferred sources for this section
+  kind: choice(FEATURES).optional(), // empty for a section of stories
+});
 
 export const Page = z
   .object({ layout: choice(LAYOUTS), slots: z.array(Section) })
@@ -68,6 +164,7 @@ export const Settings = z.object({
 });
 
 export type Section = z.infer<typeof Section>;
+export type Feature = keyof typeof FEATURES;
 export type Page = z.infer<typeof Page>;
 export type Settings = z.infer<typeof Settings>;
 
@@ -81,41 +178,14 @@ export const PRESET_SECTIONS: Section[] = [
   { title: "Science", about: "science, health and the environment" },
   { title: "Sports", about: "results and the big sports stories" },
   { title: "Culture", about: "arts, books, film and music" },
-  { title: "Weather", about: "a detailed forecast for the reader's area for today and the next few days" },
   { title: "Opinion", about: "an editorial written by the editor about a story in this edition" },
   { title: "On This Day", about: "a short history piece about something that happened on this date" },
+  ...Object.entries(FEATURES).map(([kind, f]) => ({ title: f.title, about: f.about, kind: kind as Feature })),
 ];
 
-const preset = (title: string) => PRESET_SECTIONS.find((s) => s.title === title)!;
-const page = (layout: keyof typeof LAYOUTS, ...titles: string[]): Page => ({ layout, slots: titles.map(preset) });
-
-// Starting points on the Customize page. Picking one replaces the reader's pages.
-export const TEMPLATES = {
-  general: {
-    label: "General",
-    pages: [
-      page("topTwo", "Top Stories", "Weather", "On This Day"),
-      page("halves", "World", "Business"),
-      page("topTwo", "Science", "Sports", "Culture"),
-      page("columns", "Opinion", "Tech"),
-    ],
-  },
-  local: {
-    label: "Local",
-    pages: [
-      page("topTwo", "Local News", "Weather", "On This Day"),
-      page("single", "Top Stories"),
-      page("columns", "Sports", "Culture"),
-      page("topTwo", "Opinion", "Business", "Science"),
-    ],
-  },
-  tech: {
-    label: "Tech digest",
-    pages: [
-      page("topTwo", "Top Stories", "Weather", "Opinion"),
-      page("single", "Tech"),
-      page("halves", "Business", "Science"),
-      page("columns", "World", "On This Day"),
-    ],
-  },
-};
+// Whether a section can go in a slot of this shape on this page. Stories fit any slot but the weather strip.
+export function fits(section: Section, page: number, shape: Shape) {
+  if (!section.kind) return shape !== "strip";
+  const feature = FEATURES[section.kind];
+  return (feature.shapes as Shape[]).includes(shape) && (page > 0 || feature.frontPage);
+}

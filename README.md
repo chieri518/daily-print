@@ -42,13 +42,16 @@ Requires Node 24 or later.
 | File | What it does |
 |---|---|
 | [app/](app/) | Web app pages: editions archive, sign-in, PDF links |
-| [app/customize/](app/customize/) | The Customize page: drag sections into slots on page previews |
+| [app/customize/](app/customize/) | The Customize page. `page-builder.tsx` is the page previews where sections are dragged or clicked into slots |
 | [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start an edition |
 | [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, print the PDF and save it |
 | [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, page layouts, sections, templates) and the rules for valid settings |
 | [lib/editor.ts](lib/editor.ts) | The agent: researches with web search, then writes the edition |
 | [lib/claude.ts](lib/claude.ts) | Calls Claude and works out each call's cost |
 | [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts) | Newspaper layout and typefaces |
+| [lib/weather.ts](lib/weather.ts) | The forecast from Open-Meteo, weather icons and the printed forecast |
+| [lib/puzzles.ts](lib/puzzles.ts) | Sudoku, crossword and word search generators, and how the puzzles print |
+| [lib/illustrate.ts](lib/illustrate.ts) | Draws the front-page illustration with OpenAI or Google |
 | [lib/render.ts](lib/render.ts) | Prints the layout to PDF with headless Chromium, shrinking text that doesn't fit |
 | [lib/supabase/](lib/supabase/) | Supabase clients for the signed-in reader and for the workflow |
 | [scripts/paper.ts](scripts/paper.ts) | `npm run paper`: makes an edition from paper.json without the web app |

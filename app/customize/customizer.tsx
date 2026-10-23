@@ -1,26 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { saveSettings } from "../actions";
-import {
-  fontsUrl,
-  LAYOUTS,
-  MAX_PAGES,
-  PAPER_SIZES,
-  PRESET_SECTIONS,
-  READING_LEVELS,
-  TEMPLATES,
-  TONES,
-  TYPEFACES,
-  type Page,
-  type Section,
-  type Settings,
-} from "@/lib/settings";
-
-// While editing, a slot can be empty. Every slot must be filled before saving.
-type Draft = { layout: Page["layout"]; slots: (Section | null)[] };
-// What is being dragged: a section from the list, or the section in a slot.
-type Dragged = { section: Section; from?: { page: number; slot: number } };
+import { PageBuilder, type Draft } from "./page-builder";
+import { fontsUrl, PAPER_SIZES, READING_LEVELS, TONES, TYPEFACES, type Settings } from "@/lib/settings";
 
 const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
 
@@ -29,146 +12,27 @@ export function Customizer({ initial }: { initial: Settings }) {
   const [pages, setPages] = useState<Draft[]>(initial.pages);
   const [trusted, setTrusted] = useState(initial.trustedSources.join("\n"));
   const [blocked, setBlocked] = useState(initial.blockedSources.join("\n"));
-  const [dragged, setDragged] = useState<Dragged | null>(null);
 
   const set = (change: Partial<Settings>) => setSettings({ ...settings, ...change });
-  const placed = new Set(pages.flatMap((p) => p.slots.map((s) => s?.title)));
-  const available = [...PRESET_SECTIONS, ...settings.customSections].filter((s) => !placed.has(s.title));
+  const saved = JSON.stringify({ ...settings, pages, trustedSources: lines(trusted), blockedSources: lines(blocked) });
+  const [initialSaved] = useState(saved);
+  const unsaved = saved !== initialSaved;
   const complete = pages.every((p) => p.slots.every(Boolean));
 
-  const setSlot = (pages: Draft[], page: number, slot: number, section: Section | null) =>
-    pages.map((p, i) => (i === page ? { ...p, slots: p.slots.map((s, j) => (j === slot ? section : s)) } : p));
-
-  // Dropping on a slot places the section there. Moving from another slot swaps the two.
-  const dropOnSlot = (page: number, slot: number) => {
-    if (!dragged) return;
-    let next = setSlot(pages, page, slot, dragged.section);
-    if (dragged.from) next = setSlot(next, dragged.from.page, dragged.from.slot, pages[page].slots[slot]);
-    setPages(next);
-  };
-
-  // Dropping a placed section back on the list takes it off the page.
-  const dropOnList = () => {
-    if (dragged?.from) setPages(setSlot(pages, dragged.from.page, dragged.from.slot, null));
-  };
-
-  const setLayout = (page: number, layout: Page["layout"]) => {
-    const count = LAYOUTS[layout].slots.length;
-    const slots = Array.from({ length: count }, (_, j) => pages[page].slots[j] ?? null);
-    setPages(pages.map((p, i) => (i === page ? { layout, slots } : p)));
-  };
-
-  const applyTemplate = (key: keyof typeof TEMPLATES) => {
-    if (confirm(`Replace your pages with the ${TEMPLATES[key].label} template?`)) setPages(TEMPLATES[key].pages);
-  };
-
-  const addSection = () => {
-    const title = prompt("Section name (e.g. Gardening)")?.trim();
-    if (!title || [...PRESET_SECTIONS, ...settings.customSections].some((s) => s.title === title)) return;
-    const about = prompt(`What should "${title}" cover?`)?.trim();
-    if (about) set({ customSections: [...settings.customSections, { title, about }] });
-  };
-
-  const removeSection = (title: string) => {
-    set({ customSections: settings.customSections.filter((s) => s.title !== title) });
-    setPages(pages.map((p) => ({ ...p, slots: p.slots.map((s) => (s?.title === title ? null : s)) })));
-  };
-
-  const fonts = TYPEFACES[settings.typeface];
-  const size = PAPER_SIZES[settings.paperSize];
-  const saved = { ...settings, pages, trustedSources: lines(trusted), blockedSources: lines(blocked) };
+  // Warn before closing or reloading the page with unsaved changes.
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   return (
     <form action={saveSettings} className="customize">
-      <link rel="stylesheet" href={fontsUrl(fonts)} precedence="default" />
-      <input type="hidden" name="settings" value={JSON.stringify(saved)} />
+      <link rel="stylesheet" href={fontsUrl(TYPEFACES[settings.typeface])} precedence="default" />
+      <input type="hidden" name="settings" value={saved} />
 
-      <div className="templates">
-        Start from a template:
-        {Object.entries(TEMPLATES).map(([key, t]) => (
-          <button key={key} type="button" className="link" onClick={() => applyTemplate(key as keyof typeof TEMPLATES)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="workspace">
-        <aside className="palette" onDragOver={(e) => e.preventDefault()} onDrop={dropOnList}>
-          <strong>Sections</strong>
-          <p className="muted">Drag onto a page. Drag back here to remove.</p>
-          {available.map((s) => (
-            <div key={s.title} className="chip" title={s.about} draggable onDragStart={() => setDragged({ section: s })}>
-              {s.title}
-              {settings.customSections.includes(s) && (
-                <button type="button" className="link" onClick={() => removeSection(s.title)} aria-label={`Delete ${s.title}`}>
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-          <button type="button" className="link" onClick={addSection}>
-            + New section
-          </button>
-        </aside>
-
-        <div className="sheets">
-          {pages.map((page, i) => (
-            <div key={i} className="sheet-wrap">
-              <div
-                className="sheet"
-                style={{ aspectRatio: `${parseFloat(size.width)} / ${parseFloat(size.height)}`, fontFamily: fonts.body }}
-              >
-                {i === 0 && (
-                  <div className="sheet-masthead" style={{ fontFamily: fonts.masthead }}>
-                    {settings.name}
-                  </div>
-                )}
-                <div className="sheet-slots" style={{ gridTemplate: LAYOUTS[page.layout].grid }}>
-                  {page.slots.map((section, j) => (
-                    <div
-                      key={j}
-                      className={`sheet-slot${section ? "" : " empty"}`}
-                      style={{ gridArea: "abc"[j] }}
-                      draggable={!!section}
-                      onDragStart={() => section && setDragged({ section, from: { page: i, slot: j } })}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => dropOnSlot(i, j)}
-                    >
-                      {section ? (
-                        <>
-                          <span className="sheet-section">{section.title}</span>
-                          <span className="sheet-headline" style={{ fontFamily: fonts.headline }}>
-                            {section.about}
-                          </span>
-                          <span className="sheet-lines" />
-                        </>
-                      ) : (
-                        "Drop a section here"
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="sheet-controls">
-                Page {i + 1}
-                <select value={page.layout} onChange={(e) => setLayout(i, e.target.value as Page["layout"])}>
-                  <Options options={LAYOUTS} />
-                </select>
-                {i > 0 && (
-                  <button type="button" className="link" onClick={() => setPages(pages.filter((_, j) => j !== i))}>
-                    Remove
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          {pages.length < MAX_PAGES && (
-            <button type="button" className="add-page" onClick={() => setPages([...pages, { layout: "single", slots: [null] }])}>
-              + Add a page
-            </button>
-          )}
-        </div>
-      </div>
+      <PageBuilder settings={settings} set={set} pages={pages} setPages={setPages} />
 
       <fieldset>
         <legend>Paper</legend>
@@ -217,17 +81,17 @@ export function Customizer({ initial }: { initial: Settings }) {
       <fieldset>
         <legend>Sources</legend>
         <label>
-          Trust these (one per line)
+          Trust these, one per line (optional)
           <textarea value={trusted} onChange={(e) => setTrusted(e.target.value)} rows={3} />
         </label>
         <label>
-          Never use these (one per line)
+          Never use these, one per line (optional)
           <textarea value={blocked} onChange={(e) => setBlocked(e.target.value)} rows={3} />
         </label>
       </fieldset>
 
       <label>
-        Brief to the editor
+        Brief to the editor (optional)
         <textarea
           value={settings.brief}
           onChange={(e) => set({ brief: e.target.value })}
@@ -237,10 +101,16 @@ export function Customizer({ initial }: { initial: Settings }) {
         />
       </label>
 
-      <button className="button" disabled={!complete}>
-        Save
-      </button>
-      {!complete && <span className="muted"> Fill every slot to save.</span>}
+      <div className="save-bar">
+        <button className="button" disabled={!complete || !unsaved}>
+          Save
+        </button>
+        {!complete ? (
+          <span className="muted">Fill the dashed slots to save.</span>
+        ) : (
+          unsaved && <span className="muted">You have unsaved changes.</span>
+        )}
+      </div>
     </form>
   );
 }

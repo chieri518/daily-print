@@ -13,11 +13,14 @@
 - [ ] Print a test edition on paper and review it
 - [ ] Run the same settings at $0.10, $0.50 and $1.00 per edition and compare quality side by side
 
-## Illustrations (next)
+## Illustrations, weather and puzzles
 
-- [ ] Choose an image-generation provider and a black-and-white illustration style
-- [ ] Get an API key for the image provider
-- [ ] Replace the dashed box with the generated image
+- [x] Choose an image provider (swappable: OpenAI or Google) and style (pen and ink)
+- [ ] **Add `OPENAI_API_KEY` or `GEMINI_API_KEY` to `.env`** and check the first illustrations on paper
+- [ ] Measure the cost of an illustration and add it to the edition's cost
+- [x] Weather forecast with icons and an umbrella or jacket tip
+- [x] Sudoku, mini crossword, word search and news quiz, each with yesterday's answers below it
+- [ ] Sudoku difficulty as a setting
 
 ## Milestone 2: Web app
 
@@ -40,13 +43,12 @@
 - [x] Language, tone and reading level
 - [x] A written "brief to the editor"
 - [ ] Generate a test edition with each layout and check that the text fits
-- [ ] Drag and drop on phones (it doesn't work with touch)
+- [x] Click a slot to choose a section (works on phones and with a keyboard)
 - [ ] Reorder whole pages (today you rebuild them by moving sections)
 - [ ] Feedback on articles that shapes future editions
 
 ## Future features
 
-- [ ] Crossword built from that day's stories
 - [ ] Google Calendar: birthday reminders (and maybe the day's agenda)
 - [ ] Google Photos: an "N years ago today" photo
 - [ ] Page-turn viewer in the browser

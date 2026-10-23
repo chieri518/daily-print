@@ -97,3 +97,66 @@ Replaces the page list from the previous entry.
 | Sections | A list of ready-made sections (Top Stories, Local News, World, Business, Tech, Science, Sports, Culture, Weather, Opinion, On This Day) plus sections the reader makes. Each section can be used once | |
 | Templates | General, Local and Tech digest. Picking one replaces the reader's pages | |
 | Saving | Every slot must be filled before saving | |
+
+## 2026-10-23: Making the Customize page easier to use
+
+Based on common drag-and-drop guidance: show what can be dragged and where it can go, give feedback during the drag, and always offer a way that doesn't need dragging. The owner asked to follow best practice without cluttering the page.
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Drag feedback | Sections have a drag handle. The dragged item fades. The slot under it is outlined, with a label saying what will happen (Place, Swap or Replace). While a placed section is dragged, the section list shows "Drop here to remove" | |
+| Without dragging | Click a slot (or focus it and press Enter) to choose a section from a list, or to clear the slot | Works on phones and with a keyboard |
+| Layouts | Small layout icons under each page instead of a dropdown | |
+| Slot size | Each slot shows about how many words it holds | |
+| Safety | An Undo button for every page change, so templates no longer ask for confirmation. A warning before leaving with unsaved changes. Save shows why it's off | |
+| New sections | Made in a small inline form, not browser pop-ups | |
+| Not added, to avoid clutter | A "how it works" strip, template preview cards | Revisit if testers still struggle |
+| Word counts | Each slot's word count is now **measured** from the print layout (90% of what fits), not estimated. The front-page illustration is 1.5 inches tall instead of 2 | Big front-page slots were much smaller than estimated |
+
+## 2026-10-23: Customize page feedback
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Templates | The three templates are replaced by one **"Go back to: Default template"** link, which restores the pages from paper.json | Undo still works after it |
+| New sections | Only a name is needed. Without a description, the section covers "news about {name}". A name already in use shows a message | |
+| Pop-ups | The page uses no browser pop-ups (`prompt`, `confirm`) | The owner's browser blocks them, which is why making a section failed |
+| Optional fields | The brief and both source lists are marked "(optional)" | They were never required; the labels make that clear |
+
+## 2026-10-23: Preferred sources per section
+
+| Topic | Decision | Notes |
+|---|---|---|
+| New sections | Made in a small dialog with three fields: name, what it covers (optional) and preferred sources (optional, comma-separated) | The narrow sections list was too cramped for a form |
+| Section sources | Each section can list preferred sources. The research step is asked to prefer them for that section | Like the paper-wide trusted sources, an instruction to Claude, not enforced. Ready-made sections have none for now |
+
+## 2026-10-23: Editing sections
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Editing | Every section can be edited: what it covers and its preferred sources. Open it with ✎ in the sections list, or by clicking a slot that holds it | For example, Local News from chosen local publishers |
+| Ready-made sections | Editing one saves the reader's own version under the same name, which replaces it in the list. Their names can't be changed | Keeps them recognizable |
+| Renaming | Readers can rename their own sections, but not to a name already in use | |
+| Placed sections | Saving an edit updates every slot that holds the section | |
+
+## 2026-10-23: Weather, puzzles and illustrations
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Weather | A five-day forecast from **Open-Meteo** (free, no key): icons, highs and lows, chance of rain, wind. Claude writes a one-line tip, such as bringing an umbrella or a jacket. The masthead shows today's forecast | Shown in °F and mph in the US, °C and km/h elsewhere. If the location isn't found, shorter versions of it are tried ("San Francisco Bay Area" → "San Francisco") |
+| Weather icons | Simple black-and-white line drawings (SVG) written in code | |
+| Puzzles | **Sudoku** (made by code, exactly one solution), **Mini Crossword** (Claude picks 12 answers and clues from the day's stories; code lays out the grid), **Word Search** (Claude picks the words; code hides them), **News Quiz** (5 questions by Claude) | Puzzles are seeded by the edition, so making the same edition again gives the same puzzles |
+| Answers | A **Yesterday's Answers** section prints the previous edition's solutions | Puzzles are saved with each edition for this |
+| Sections that aren't stories | Weather and puzzles have a fixed design, so each fits only some slot shapes (full, wide, tall, quarter, strip). The builder says "Doesn't fit" and leaves them out of the list where they don't fit. Puzzles can't go on the front page | Owner chose this over a free-form grid, which would be much more work and harder to keep printable |
+| New layouts | **Four quarters** (for a puzzle page) and **Weather strip + main** (front page) | Word counts measured like the others |
+| New default paper | Front: weather strip + Top Stories. Page 2: Tech, Opinion, On This Day. Page 3: Bay Area + Mini Crossword. Page 4: Sudoku, Word Search, News Quiz, Yesterday's Answers | |
+| Illustration source | **AI-generated** pen-and-ink illustration of the lead story. **Not** photos taken from news sites | News photos are copyrighted, and fetching them through MCP doesn't change that. Open-licensed photos (Wikimedia Commons, Openverse) remain an option for later |
+| Image provider | Swappable: OpenAI (`gpt-image-2`) or Google (`gemini-3.1-flash-image`), whichever has a key. `IMAGE_PROVIDER` and `IMAGE_MODEL` override | Without a key, or if drawing fails, the paper prints the dashed placeholder box |
+| Illustration style | Pen and ink with cross-hatching, wide composition, no text. Printed in grayscale, 1.5 inches tall, front page only | |
+
+## 2026-10-23: Answers attached to each puzzle
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Yesterday's answers | No longer a section of its own. Each puzzle prints yesterday's answers below it: the News Quiz answers, the Sudoku solution (small grid) and the Crossword answers. Left out when there was no puzzle yesterday | The Word Search has no answers, because its words are already listed |
+| Default paper | Page 2 is now Tech, Opinion and Business. Page 4 is Sudoku, Word Search, News Quiz and On This Day | Replaces the old answers slot |
+| Sudoku size | Squares are 2em again so the puzzle and yesterday's solution fit in a quarter page | |
