@@ -1,4 +1,5 @@
 import { research, write, type Edition, type Paper } from "../lib/editor.ts";
+import { birthdays } from "../lib/google.ts";
 import { illustrate } from "../lib/illustrate.ts";
 import { layout } from "../lib/layout.ts";
 import { makePuzzles, type Puzzles } from "../lib/puzzles.ts";
@@ -8,7 +9,8 @@ import { admin } from "../lib/supabase/admin.ts";
 import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts";
 
 // Writes one edition and saves its PDF. Each step is saved as it finishes, so a crash resumes where it stopped.
-export async function makeEdition(id: string, userId: string, settings: Settings, date: string) {
+// `date` is printed on the masthead; `day` (YYYY-MM-DD) is the same date, for looking up birthdays.
+export async function makeEdition(id: string, userId: string, settings: Settings, date: string, day: string) {
   "use workflow";
   try {
     const forecast = await forecastStep(settings.location);
@@ -16,7 +18,8 @@ export async function makeEdition(id: string, userId: string, settings: Settings
     const { edition, usd } = await writeStep(settings, date, notes.notes, forecast ? describeForecast(forecast) : "");
     const image = await illustrateStep(edition.illustration);
     const yesterday = await yesterdayStep(id, userId);
-    await printStep(id, userId, settings, date, { edition, forecast, image, yesterday }, notes.usd + usd);
+    const names = await birthdaysStep(userId, day);
+    await printStep(id, userId, settings, date, { edition, forecast, image, yesterday, names }, notes.usd + usd);
   } catch (error) {
     await failStep(id, String(error));
   }
@@ -62,11 +65,35 @@ async function yesterdayStep(id: string, userId: string) {
   return ((data?.content as Paper | undefined)?.puzzles ?? null) as Puzzles | null;
 }
 
-type Parts = { edition: Edition; forecast: Forecast | null; image: string | null; yesterday: Puzzles | null };
+// Today's birthdays, if the reader connected their Google Calendar. A problem with Google never stops the paper.
+async function birthdaysStep(userId: string, day: string) {
+  "use step";
+  const { data } = await admin().from("google_connections").select("refresh_token").eq("user_id", userId).maybeSingle();
+  if (!data) return [];
+  try {
+    return await birthdays(data.refresh_token, day);
+  } catch (error) {
+    console.warn(`Couldn't read birthdays: ${error}`);
+    return [];
+  }
+}
+
+type Parts = {
+  edition: Edition;
+  forecast: Forecast | null;
+  image: string | null;
+  yesterday: Puzzles | null;
+  names: string[]; // today's birthdays
+};
 
 async function printStep(id: string, userId: string, settings: Settings, date: string, parts: Parts, costUsd: number) {
   "use step";
-  const paper: Paper = { ...parts.edition, forecast: parts.forecast, puzzles: makePuzzles(id, parts.edition) };
+  const paper: Paper = {
+    ...parts.edition,
+    forecast: parts.forecast,
+    puzzles: makePuzzles(id, parts.edition),
+    birthdays: parts.names,
+  };
   const { pdf, overflowing } = await renderPdf(layout(settings, date, paper, parts.image, parts.yesterday));
   if (overflowing.length) console.warn(`Edition ${id}: text is cut off on page ${overflowing.join(", ")}.`);
   const db = admin();

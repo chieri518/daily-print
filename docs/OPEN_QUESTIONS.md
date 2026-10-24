@@ -23,6 +23,11 @@
 - **More layouts:** are four enough? Should readers be able to resize slots?
 - **Word counts per slot:** measured with sample text in the Classic typeface at 10pt. Other typefaces and real headlines may fit more or less. Check against real editions.
 
+## Google
+
+- **Verification:** reading Google Calendar is a sensitive permission. Before opening the app to the public, Google must verify it; until then, users see an "unverified app" warning, and only up to 100 users can connect.
+- **Birthday names:** Google Calendar names birthday events after the contact, sometimes with "'s birthday" added, which we remove. Check real names print correctly.
+
 ## Legal
 
 - Rules for quoting and summarizing news: how long a summary can be, how to attribute it, and whether to show links or QR codes in print.

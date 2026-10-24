@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
 import { Settings } from "@/lib/settings";
+import { disconnect } from "@/lib/google";
+import { admin } from "@/lib/supabase/admin";
 import { canGenerate, createClient, getReader, loadSettings } from "@/lib/supabase/server";
 import { today } from "@/lib/today";
 import { makeEdition } from "@/workflows/edition";
@@ -53,6 +55,15 @@ export async function generate(form: FormData) {
     .select("id")
     .single();
   if (error) throw error;
-  await start(makeEdition, [data.id, reader.id, settings, date]);
+  await start(makeEdition, [data.id, reader.id, settings, date, day]);
   revalidatePath("/");
+}
+
+// Stops reading birthdays from the reader's Google Calendar, and tells Google to cancel the access.
+export async function disconnectGoogle() {
+  const reader = await requireReader();
+  const db = admin();
+  const { data } = await db.from("google_connections").select("refresh_token").eq("user_id", reader.id).maybeSingle();
+  if (data) await disconnect(data.refresh_token);
+  await db.from("google_connections").delete().eq("user_id", reader.id);
 }

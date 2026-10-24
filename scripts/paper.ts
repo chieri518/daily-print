@@ -24,7 +24,8 @@ const forecast = await getForecast(settings.location);
 const notes = await research(settings, date);
 const { edition, usd } = await write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "");
 const image = await illustrate(edition.illustration);
-const paper: Paper = { ...edition, forecast, puzzles: makePuzzles(day, edition) };
+// Birthdays need a Google Calendar connected in the web app, so this command prints without them.
+const paper: Paper = { ...edition, forecast, puzzles: makePuzzles(day, edition), birthdays: [] };
 const costUsd = notes.usd + usd;
 mkdirSync("editions", { recursive: true });
 writeFileSync(`${file}.json`, JSON.stringify({ date, costUsd, paper }, null, 2));

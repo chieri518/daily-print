@@ -7,7 +7,7 @@
     {
       "layout": "stripMain",
       "slots": [
-        { "title": "Weather", "about": "a five-day forecast, and whether to bring an umbrella or a jacket", "kind": "weather" },
+        { "title": "Weather", "about": "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket", "kind": "weather" },
         { "title": "Top Stories", "about": "the most important stories of the day, from any topic" }
       ]
     },

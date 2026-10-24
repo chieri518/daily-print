@@ -64,6 +64,20 @@ export function FeaturePreview({ kind }: { kind: Feature }) {
       );
     case "wordSearch":
       return <span className="mini-letters">QWHARVESTZBALLOTKMNTRAINOPLUSDXFOGEYRV</span>;
+    case "jumble":
+      return (
+        <span className="mini-jumble">
+          {["TEALBL", "VASHRE", "NIRTA"].map((w) => (
+            <span key={w}>{w}</span>
+          ))}
+        </span>
+      );
+    case "wordOfTheDay":
+      return (
+        <span className="mini-word">
+          <b>serendipity</b> <i>noun</i>
+        </span>
+      );
     case "trivia":
       return (
         <span className="mini-quiz">

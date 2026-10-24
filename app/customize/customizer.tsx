@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { saveSettings } from "../actions";
+import { useRouter } from "next/navigation";
+import { disconnectGoogle, saveSettings } from "../actions";
 import { PageBuilder, type Draft } from "./page-builder";
 import { fontsUrl, PAPER_SIZES, READING_LEVELS, TONES, TYPEFACES, type Settings } from "@/lib/settings";
 
@@ -14,7 +15,8 @@ const lines = (text: string) =>
     .map((line) => line.trim())
     .filter(Boolean);
 
-export function Customizer({ initial }: { initial: Settings }) {
+export function Customizer({ initial, googleConnected }: { initial: Settings; googleConnected: boolean }) {
+  const router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [pages, setPages] = useState<Draft[]>(initial.pages);
   const [trusted, setTrusted] = useState(initial.trustedSources.join("\n"));
@@ -110,6 +112,32 @@ export function Customizer({ initial }: { initial: Settings }) {
             </label>
           ))}
         </fieldset>
+        <div className="wide">
+          <b>Birthdays</b>
+          <p className="muted">
+            On days when someone in your Google Contacts has a birthday, the front page lists them: “Birthdays today:
+            Alex Kim, Sam Ortiz”.
+          </p>
+          {googleConnected ? (
+            <p>
+              Google Calendar is connected.{" "}
+              <button
+                type="button"
+                className="link"
+                onClick={async () => {
+                  await disconnectGoogle();
+                  router.refresh();
+                }}
+              >
+                Disconnect
+              </button>
+            </p>
+          ) : (
+            <a className="button" href="/api/google/connect">
+              Connect Google Calendar
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="fields" hidden={tab !== "Writing & sources"}>

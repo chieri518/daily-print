@@ -29,7 +29,8 @@ Requires Node 24 or later.
 3. Google sign-in: in Google Cloud, create an OAuth client of type "Web application" with the redirect URI shown on Supabase's Authentication → Providers → Google page. Paste the client ID and secret into that page and turn Google on.
 4. Under Authentication → URL Configuration, add `http://localhost:3000/auth/callback` and your Vercel URL plus `/auth/callback` to the redirect URLs.
 5. Put your email in `ALLOWED_EMAILS` so you can generate editions.
-6. On Vercel, add the same variables: `vercel env add NAME` for each one in `.env.example`.
+6. Birthdays from Google Calendar (optional): in Google Cloud, turn on the **Google Calendar API**, add the `calendar.events.readonly` scope under Data Access, and add `http://localhost:3000/api/google/callback` (and your Vercel URL + `/api/google/callback`) to the OAuth client's redirect URIs. Put the client ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Set the app's publishing status to **In production**; in Testing, Google cancels the access every 7 days.
+7. On Vercel, add the same variables: `vercel env add NAME` for each one in `.env.example`.
 
 ## Run it
 
@@ -51,6 +52,7 @@ Requires Node 24 or later.
 | [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts) | Newspaper layout and typefaces |
 | [lib/weather.ts](lib/weather.ts) | The forecast from Open-Meteo, weather icons and the printed forecast |
 | [lib/puzzles.ts](lib/puzzles.ts) | Sudoku, crossword and word search generators, and how the puzzles print |
+| [lib/google.ts](lib/google.ts) | Connects a reader's Google Calendar and reads today's birthdays |
 | [lib/illustrate.ts](lib/illustrate.ts) | Draws the front-page illustration with OpenAI or Google |
 | [lib/render.ts](lib/render.ts) | Prints the layout to PDF with headless Chromium, shrinking text that doesn't fit |
 | [lib/supabase/](lib/supabase/) | Supabase clients for the signed-in reader and for the workflow |

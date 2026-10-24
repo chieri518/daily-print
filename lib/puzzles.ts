@@ -14,11 +14,12 @@ export type Puzzles = {
   crossword: Crossword;
   wordSearch: { grid: string[]; words: string[] };
   trivia: { question: string; answer: string }[];
+  jumble?: { words: string[]; scrambled: string[] }; // missing in editions from before the Jumble
 };
 
 export function makePuzzles(
   seed: string,
-  words: { crossword: Clue[]; wordSearch: string[]; trivia: Puzzles["trivia"] },
+  words: { crossword: Clue[]; wordSearch: string[]; trivia: Puzzles["trivia"]; jumble: string[] },
 ): Puzzles {
   const rand = random(seed);
   return {
@@ -26,6 +27,7 @@ export function makePuzzles(
     crossword: crossword(words.crossword, rand),
     wordSearch: wordSearch(words.wordSearch, rand),
     trivia: words.trivia,
+    jumble: jumble(words.jumble, rand),
   };
 }
 
@@ -230,6 +232,20 @@ function wordSearch(list: string[], rand: () => number) {
   };
 }
 
+// --- Jumble: shuffle each word's letters until they read differently ---
+
+function jumble(list: string[], rand: () => number) {
+  const words = list.map(letters).filter((w) => w.length >= 3);
+  const scrambled = words.map((word) => {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const mixed = shuffle([...word], rand).join("");
+      if (mixed !== word) return mixed;
+    }
+    return word; // e.g. "EEE" can't be scrambled
+  });
+  return { words, scrambled };
+}
+
 // --- How each puzzle prints ---
 
 const table = (rows: string[][], className: string) =>
@@ -270,6 +286,15 @@ export function wordSearchHtml({ grid, words }: Puzzles["wordSearch"]) {
     "grid letters",
   )}
     <p class="words">${words.join(" · ")}</p></div>`;
+}
+
+// Each scrambled word in tiles, with empty squares to write the answer.
+export function jumbleHtml({ scrambled }: NonNullable<Puzzles["jumble"]>, yesterday?: Puzzles["jumble"]) {
+  const row = (word: string) =>
+    `<div class="jumble-word"><span class="tiles">${[...word].map((l) => `<span>${l}</span>`).join("")}</span>
+      <span class="blanks">${[...word].map(() => "<span></span>").join("")}</span></div>`;
+  return `<div class="jumble">${scrambled.map(row).join("")}</div>
+    ${answers(!!yesterday && `<p>${yesterday.words.join(" · ")}</p>`)}`;
 }
 
 export function triviaHtml(trivia: Puzzles["trivia"], yesterday?: Puzzles["trivia"]) {

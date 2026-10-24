@@ -1,7 +1,7 @@
 import type { Paper, Story } from "./editor.ts";
 import { esc } from "./html.ts";
 import { css } from "./paper-css.ts";
-import { crosswordHtml, sudokuHtml, triviaHtml, wordSearchHtml, type Puzzles } from "./puzzles.ts";
+import { crosswordHtml, jumbleHtml, sudokuHtml, triviaHtml, wordSearchHtml, type Puzzles } from "./puzzles.ts";
 import {
   area,
   fontsUrl,
@@ -32,7 +32,10 @@ export function layout(
       <div class="meta"><span>${esc(date)}</span><span>${esc(settings.location)}</span><span>${
         paper.forecast ? todayLine(paper.forecast) : ""
       }</span></div>
-    </header>`;
+    </header>
+    ${
+      paper.birthdays.length ? `<p class="birthdays">Birthdays today: ${paper.birthdays.map(esc).join(", ")}</p>` : ""
+    }`;
   const illustration = image
     ? `<figure class="illustration"><img src="${image}" alt=""></figure>`
     : `<figure class="illustration empty"><figcaption>Illustration: ${esc(paper.illustration)}</figcaption></figure>`;
@@ -44,6 +47,12 @@ export function layout(
     sudoku: () => sudokuHtml(paper.puzzles.sudoku, yesterday?.sudoku),
     wordSearch: () => wordSearchHtml(paper.puzzles.wordSearch),
     trivia: () => triviaHtml(paper.puzzles.trivia, yesterday?.trivia),
+    jumble: () => jumbleHtml(paper.puzzles.jumble!, yesterday?.jumble),
+    wordOfTheDay: () => {
+      const w = paper.wordOfTheDay;
+      return `<div class="word-of-the-day"><p><b class="word">${esc(w.word)}</b> <i>${esc(w.partOfSpeech)}</i></p>
+        <p>${esc(w.definition)}</p><p class="example">“${esc(w.example)}”</p></div>`;
+    },
   };
 
   const pages = settings.pages.map((page, i) => {

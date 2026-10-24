@@ -191,3 +191,25 @@ From a review of the whole app. The owner chose to improve the Customize page fi
 | Typeface | Chosen from three cards that show the paper's name, a headline and body text in each typeface | Replaces a dropdown of names |
 | Tone | Added **Gen Z**: casual and playful, with some current slang, but facts stay accurate. Each tone now carries a short guide for the editor | |
 | Language | **English only.** The language setting is removed | The owner asked for English, Chinese, Spanish and Japanese, or English only if that was hard. Chinese and Japanese need different fonts, new puzzles (the crossword and word search use A–Z), translated print labels and new word counts. Spanish alone would be easy; revisit later |
+
+## 2026-10-23: More than news
+
+From research on what newspapers carry besides news.
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Jumble | A new puzzle: four scrambled words from the day's stories, with squares to write the answers. Claude picks the words; code scrambles them. Yesterday's answers print below | |
+| Almanac and air quality | Part of the weather section: one line with sunrise, sunset, daylight, moon phase and air quality (US index) | From Open-Meteo, free. Moon phase is worked out by code |
+| Word of the Day | A small section: the word, its part of speech, a definition and an example sentence. It can go on the front page and in the weather strip's slot | Written by Claude |
+| Birthdays | A slim "Birthdays today: …" line under the front-page masthead, only on days with birthdays. Not a section to place | From the reader's Google Calendar, which holds their contacts' birthdays |
+| Google connection | Readers connect Google Calendar from Customize (Paper & style). Read-only access to calendar events. The refresh token is stored in a table only the server can read | Names are printed by code and never sent to Claude. If Google fails, the paper prints without birthdays. `npm run paper` has no birthdays, because it has no web app login |
+| For later | Horoscope, editorial cartoon, sports teams, markets snapshot or watchlist, and other ideas | Listed in [TODO.md](TODO.md) |
+
+## 2026-10-24: Landing page
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Hero | Headline, one sentence and **Sign in with Google**, beside a sketch of a front page whose paper name cycles through examples | The name stays still for visitors who prefer less motion |
+| Sections | **How it works** (build your paper → an AI editor writes it each morning → read or print it) and **The printer box**, marked "Coming soon" | No more "four-page paper": readers choose their pages |
+| Tone | Calm and minimal | |
+| Sign-in | Unchanged: anyone can sign in and customize; only invited emails can make editions | |

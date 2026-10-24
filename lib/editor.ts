@@ -31,13 +31,23 @@ const Edition = z.object({
   trivia: z
     .array(z.object({ question: z.string(), answer: z.string().describe("A few words") }))
     .describe("5 quiz questions about today's stories"),
+  jumble: z.array(z.string()).describe("4 single words of 5 to 7 letters from today's stories, to scramble"),
+  wordOfTheDay: z
+    .object({
+      word: z.string(),
+      partOfSpeech: z.string().describe('e.g. "noun"'),
+      definition: z.string(),
+      example: z.string().describe("A sentence using the word, ideally about today's news"),
+    })
+    .describe("An interesting English word that's useful, not obscure"),
 });
 
 export type Story = z.infer<typeof Story>;
 export type Edition = z.infer<typeof Edition>;
 
 // Everything that goes into a printed edition. Saved with the edition, so tomorrow's paper can print the answers.
-export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles };
+// Birthdays are names from the reader's Google Calendar; they never go to Claude.
+export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles; birthdays: string[] };
 
 // Every section of stories in the paper. Weather and puzzles are made separately.
 function sectionList(settings: Settings) {

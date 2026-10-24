@@ -1,20 +1,10 @@
-import { signIn } from "./actions";
 import { GenerateButton, RefreshWhileWriting } from "./client";
+import { Landing } from "./landing";
 import { canGenerate, getReader } from "@/lib/supabase/server";
 
 export default async function Home() {
   const reader = await getReader();
-  if (!reader) {
-    return (
-      <>
-        <h1>Your own newspaper, every morning.</h1>
-        <p>An AI editor reads the news on the topics and places you care about, then writes and lays out a four-page paper you can print.</p>
-        <form action={signIn}>
-          <button className="button">Sign in with Google</button>
-        </form>
-      </>
-    );
-  }
+  if (!reader) return <Landing />;
 
   const { data: editions } = await reader.supabase
     .from("editions")

@@ -21,6 +21,9 @@
 - [x] Weather forecast with icons and an umbrella or jacket tip
 - [x] Sudoku, mini crossword, word search and news quiz, each with yesterday's answers below it
 - [ ] Sudoku difficulty as a setting
+- [x] Jumble, Word of the Day, and an almanac with air quality in the weather
+- [x] Birthdays today from Google Calendar
+- [ ] **Push the new `google_connections` table** (`npx supabase db push`) and set up Google Calendar (README, Supabase step 6)
 
 ## Milestone 2: Web app
 
@@ -46,12 +49,20 @@
 - [x] Click a slot to choose a section (works on phones and with a keyboard)
 - [x] Reorder whole pages
 - [ ] Editions page: front-page thumbnails, failure reason and Try again, progress while writing
-- [ ] Sign-in page: sample front page and a short explanation
+- [x] Landing page: sample front page, how it works, printer box
 - [ ] Feedback on articles that shapes future editions
 
 ## Future features
 
-- [ ] Google Calendar: birthday reminders (and maybe the day's agenda)
+Ideas from traditional newspapers, for later:
+
+- [ ] Horoscope (the reader picks their sign)
+- [ ] Editorial cartoon or comic strip (needs the image API)
+- [ ] Your sports teams: scores and schedule
+- [ ] Markets snapshot, or your own watchlist
+- [ ] Others from the research: Cryptoquote, recipe card, book or film pick, kids' corner
+- [ ] Today's agenda from Google Calendar (the same connection as birthdays)
+
 - [ ] Google Photos: an "N years ago today" photo
 - [ ] Page-turn viewer in the browser
 - [ ] Printer box: prints each morning's edition automatically (see [ARCHITECTURE.md](ARCHITECTURE.md))

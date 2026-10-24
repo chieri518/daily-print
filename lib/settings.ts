@@ -104,7 +104,7 @@ export function slotWords(page: number, layout: keyof typeof LAYOUTS, slot: numb
 export const FEATURES = {
   weather: {
     title: "Weather",
-    about: "a five-day forecast, and whether to bring an umbrella or a jacket",
+    about: "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
     shapes: ["strip", "wide", "full"],
     frontPage: true,
   },
@@ -126,6 +126,18 @@ export const FEATURES = {
     about: "five questions about today's stories",
     shapes: ["quarter", "wide", "tall", "full"],
     frontPage: false,
+  },
+  jumble: {
+    title: "Jumble",
+    about: "four scrambled words from today's stories",
+    shapes: ["quarter", "wide", "tall", "full"],
+    frontPage: false,
+  },
+  wordOfTheDay: {
+    title: "Word of the Day",
+    about: "an interesting word, what it means and how to use it",
+    shapes: ["strip", "quarter", "wide", "tall", "full"],
+    frontPage: true,
   },
 } satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
 

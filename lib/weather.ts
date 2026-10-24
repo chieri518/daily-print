@@ -1,10 +1,15 @@
-// The five-day forecast, from Open-Meteo (free, no key): https://open-meteo.com
+// The five-day forecast, today's almanac (sun, moon) and air quality, from Open-Meteo (free, no key): https://open-meteo.com
 import { esc } from "./html.ts";
 
 export type Forecast = {
   place: string;
   unit: "°F" | "°C";
   days: { date: string; code: number; high: number; low: number; feelsLike: number; rain: number; wind: number }[];
+  sunrise: string; // e.g. "7:26 am"
+  sunset: string;
+  daylight: string; // e.g. "10h 55m"
+  moon: string; // e.g. "Waxing crescent"
+  airQuality: number | null; // US AQI
 };
 
 // Finds the location, trying shorter names until one matches ("San Francisco Bay Area" → "San Francisco").
@@ -30,13 +35,14 @@ export async function getForecast(location: string): Promise<Forecast | null> {
     latitude: String(place.latitude),
     longitude: String(place.longitude),
     daily:
-      "weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max",
+      "weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset,daylight_duration",
     temperature_unit: us ? "fahrenheit" : "celsius",
     wind_speed_unit: us ? "mph" : "kmh",
     timezone: "auto",
     forecast_days: "5",
   });
   const { daily: d } = await (await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)).json();
+  const minutes = Math.round(d.daylight_duration[0] / 60);
   return {
     place: place.name,
     unit: us ? "°F" : "°C",
@@ -49,19 +55,66 @@ export async function getForecast(location: string): Promise<Forecast | null> {
       rain: d.precipitation_probability_max[i] ?? 0,
       wind: Math.round(d.wind_speed_10m_max[i]),
     })),
+    sunrise: clock(d.sunrise[0]),
+    sunset: clock(d.sunset[0]),
+    daylight: `${Math.floor(minutes / 60)}h ${minutes % 60}m`,
+    moon: moonPhase(new Date(`${d.time[0]}T12:00:00Z`)),
+    airQuality: await airQuality(place.latitude, place.longitude),
   };
+}
+
+// The US air quality index right now, or null if it isn't available.
+async function airQuality(latitude: number, longitude: number) {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`;
+    return (await (await fetch(url)).json()).current.us_aqi as number;
+  } catch {
+    return null;
+  }
+}
+
+// "2026-10-23T07:26" → "7:26 am"
+function clock(time: string) {
+  const [h, m] = time.slice(11, 16).split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
+}
+
+// The moon's phase, counted from a known new moon (January 6, 2000) in cycles of 29.53 days.
+function moonPhase(date: Date) {
+  const cycle = 29.530588;
+  const age = ((date.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000) % cycle;
+  const phases = [
+    "New moon",
+    "Waxing crescent",
+    "First quarter",
+    "Waxing gibbous",
+    "Full moon",
+    "Waning gibbous",
+    "Last quarter",
+    "Waning crescent",
+  ];
+  return phases[Math.round((age / cycle) * 8) % 8];
+}
+
+// What the air quality number means, in the US index's own words.
+function airLabel(aqi: number) {
+  if (aqi <= 50) return "Good";
+  if (aqi <= 100) return "Moderate";
+  if (aqi <= 150) return "Unhealthy for sensitive groups";
+  if (aqi <= 200) return "Unhealthy";
+  return "Very unhealthy";
 }
 
 // Plain-text forecast for Claude, which writes the umbrella-or-jacket tip.
 export function describeForecast(f: Forecast) {
-  return f.days
-    .map(
-      (d) =>
-        `${d.date}: ${condition(d.code).label}, high ${d.high}${f.unit}, low ${d.low}${f.unit}, ${
-          d.rain
-        }% chance of rain, wind ${d.wind}`,
-    )
-    .join("\n");
+  const days = f.days.map(
+    (d) =>
+      `${d.date}: ${condition(d.code).label}, high ${d.high}${f.unit}, low ${d.low}${f.unit}, ${
+        d.rain
+      }% chance of rain, wind ${d.wind}`,
+  );
+  const air = f.airQuality !== null ? `Air quality today: ${f.airQuality} (${airLabel(f.airQuality)})` : "";
+  return [...days, air].join("\n");
 }
 
 // The masthead line, e.g. "Partly cloudy, 68°F / 53°F".
@@ -70,7 +123,7 @@ export function todayLine(f: Forecast) {
   return `${condition(d.code).label}, ${d.high}${f.unit} / ${d.low}${f.unit}`;
 }
 
-// The forecast as printed: one column per day with an icon, then the tip.
+// The forecast as printed: one column per day with an icon, today's almanac line, then the tip.
 export function weatherHtml(f: Forecast | null, tip: string) {
   if (!f) return `<p class="weather-tip">The forecast wasn't available today.</p>`;
   const days = f.days.map((d, i) => {
@@ -84,7 +137,16 @@ export function weatherHtml(f: Forecast | null, tip: string) {
       <span class="small">Rain ${d.rain}% · Wind ${d.wind}</span>
     </div>`;
   });
-  return `<div class="weather"><div class="days">${days.join("")}</div><p class="weather-tip">${esc(tip)}</p></div>`;
+  const almanac = [
+    `Sunrise ${f.sunrise}`,
+    `Sunset ${f.sunset}`,
+    `Daylight ${f.daylight}`,
+    f.moon,
+    f.airQuality !== null && `Air quality ${f.airQuality}, ${airLabel(f.airQuality).toLowerCase()}`,
+  ].filter(Boolean);
+  return `<div class="weather"><div class="days">${days.join("")}</div>
+    <p class="almanac">${almanac.join(" · ")}</p>
+    <p class="weather-tip">${esc(tip)}</p></div>`;
 }
 
 // WMO weather codes, grouped into the conditions we draw.

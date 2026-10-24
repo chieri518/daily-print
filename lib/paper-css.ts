@@ -42,6 +42,7 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .weather .icon { width: 2.8em; height: 2.8em; }
 .weather .condition { font-size: 0.85em; }
 .weather .temps { font-size: 1.15em; }
+.almanac { margin-top: 0.3em; text-align: center; font-size: 0.8em; }
 .weather-tip { font-family: var(--headline), serif; font-style: italic; text-align: center; margin-top: 0.4em; font-size: 1.1em; }
 
 /* Puzzles */
@@ -68,4 +69,15 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
 .yesterday { margin-top: 0.6em; padding-top: 0.4em; border-top: 1px solid #000; font-size: 0.85em; }
 .yesterday b { display: block; margin-bottom: 0.2em; }
 .yesterday .sudoku.mini { margin: 0; }
+
+.birthdays { margin: -0.6em 0 0.8em; text-align: center; font-size: 0.9em; }
+
+/* Jumble and Word of the Day */
+.jumble { display: grid; gap: 0.6em; }
+.jumble-word { display: flex; gap: 1em; align-items: center; }
+.jumble-word span span { display: inline-block; width: 1.6em; height: 1.6em; margin-right: 2px; text-align: center; line-height: 1.6em; border: 1px solid #000; }
+.jumble-word .tiles span { font-weight: bold; border-radius: 50%; }
+.word-of-the-day p { margin-bottom: 0.3em; }
+.word-of-the-day .word { font-family: var(--headline), serif; font-size: 1.6em; }
+.word-of-the-day .example { font-style: italic; }
 `;
