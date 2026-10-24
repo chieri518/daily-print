@@ -16,14 +16,14 @@
 ## Illustrations, weather and puzzles
 
 - [x] Choose an image provider (swappable: OpenAI or Google) and style (pen and ink)
-- [ ] **Add `OPENAI_API_KEY` or `GEMINI_API_KEY` to `.env`** and check the first illustrations on paper
+- [x] Add an OpenAI key and check the first illustrations (works with `gpt-image-2`)
 - [ ] Measure the cost of an illustration and add it to the edition's cost
 - [x] Weather forecast with icons and an umbrella or jacket tip
 - [x] Sudoku, mini crossword, word search and news quiz, each with yesterday's answers below it
 - [ ] Sudoku difficulty as a setting
 - [x] Jumble, Word of the Day, and an almanac with air quality in the weather
 - [x] Birthdays today from Google Calendar
-- [ ] **Push the new `google_connections` table** (`npx supabase db push`) and set up Google Calendar (README, Supabase step 6)
+- [ ] **Push the new database changes** (`npx supabase db push`): the `google_connections` table and stopping editions. Then set up Google Calendar (README, Supabase step 6)
 
 ## Milestone 2: Web app
 
@@ -57,7 +57,7 @@
 Ideas from traditional newspapers, for later:
 
 - [ ] Horoscope (the reader picks their sign)
-- [ ] Editorial cartoon or comic strip (needs the image API)
+- [x] Comic strip, starring a cast the reader chooses
 - [ ] Your sports teams: scores and schedule
 - [ ] Markets snapshot, or your own watchlist
 - [ ] Others from the research: Cryptoquote, recipe card, book or film pick, kids' corner

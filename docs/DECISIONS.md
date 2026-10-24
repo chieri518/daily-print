@@ -213,3 +213,50 @@ From research on what newspapers carry besides news.
 | Sections | **How it works** (build your paper → an AI editor writes it each morning → read or print it) and **The printer box**, marked "Coming soon" | No more "four-page paper": readers choose their pages |
 | Tone | Calm and minimal | |
 | Sign-in | Unchanged: anyone can sign in and customize; only invited emails can make editions | |
+
+## 2026-10-24: Fahrenheit or Celsius
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Temperature | Readers choose °F or °C in Customize → Paper & style. Wind follows: mph with °F, km/h with °C, and the unit is now printed | Replaces choosing by country. Settings saved before this choice get °F |
+
+## 2026-10-24: Illustrations working
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Bug | An empty `IMAGE_PROVIDER=` line in `.env` turned illustrations off. Empty settings now count as not set | Found when the owner's OpenAI key didn't produce images |
+| Shape | Illustrations are 3:1 (OpenAI size 1536×512) and print uncropped across the slot | The old 3:2 picture was cropped into a 1.5-inch band, cutting off the subject. `gpt-image-2` works; one image takes about 30 seconds |
+| Where it goes | Only in a **full or tall** slot of stories on the front page (One section, Weather strip + main, Two columns). With other front-page layouts there's no illustration, and none is made | In shorter slots a 3:1 picture left almost no room for text. Front-page word counts re-measured |
+
+## 2026-10-24: A kinder illustration, and a comic strip
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Illustration | The editor chooses one **light or neutral** story in the front page's big slot and illustrates that one. It never pictures violence, death, injury, war, disasters, crime or grief. On a heavy news day it skips the picture and writes more instead | It used to illustrate the first story, whatever it was (for example, a deadly attack). The editor is told how many words fit with and without the picture |
+| Comic Strip | A new section for **strip** slots (the top of a "Strip + main" page), including the front page: four cute panels in one row, black-and-white, with speech bubbles drawn into the art | One more image per edition (a few cents, about 20 seconds). Without an image key, the panels print as words. In taller slots it left a big gap |
+| Cast | The reader describes the cast in Customize (Paper & style); it starts as "a skeptical gray cat and an over-excited pigeon" | The same description every day keeps the characters alike. No real people |
+| Comic topic | A gentle, non-partisan joke about a light story of the day. Never about tragedies | Each panel says who speaks, so bubbles point at the right character |
+| Word limits | The editor is told the word counts are limits, that a big slot holds at most three stories, and to put the illustrated story first | The first real run wrote 296 words where 210 fit, in four stories, so the front page was cut off |
+| Slot shapes | The bottom slots of "Top + two below" are now **small** (shorter than a quarter page). Everything but the Sudoku fits there | Sudoku and yesterday's solution didn't fit |
+| Layout name | "Weather strip + main" is now **"Strip + main"**: the strip can hold the weather, the comic or the Word of the Day | Its main slot's word count is sized for the taller comic strip |
+
+## 2026-10-24: Faster editions
+
+Measured on the default paper: from about 5 minutes to about 3.
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Progress log | Each part prints when it starts and how long it took, and each Claude call prints its turns, web searches and output size. Same lines in the terminal and in the web app's workflow logs | No progress display on the Editions page, by the owner's choice |
+| Research | One Claude call **per section, all at once**, with up to 6 web searches each. Notes are combined by section | 181 s → 80 s. Was one long call doing 19 turns one after another |
+| Writing | Two calls **at the same time**: the stories (Opus) and the extras: weather tip, puzzle words, quiz, word of the day, comic (**Sonnet**, faster) | 113 s → 79 s. The extras come from the research notes, not the finished stories |
+| Forecast | Fetched while research runs | Saves a few seconds |
+| Cost | With Claude Code, the cost estimate roughly doubles (about $2.60), because every call carries Claude Code's own ~10–19K-token instructions. With the API key, each call only sends our prompt, so cost should stay about the same. Measure on the first API run | Not tried, for later if needed: Sonnet for research, lower effort for writing |
+
+## 2026-10-24: Stopping an edition
+
+| Topic | Decision | Notes |
+|---|---|---|
+| Stop button | An edition being written shows **Stop** on the Editions page. It marks the edition **stopped** | An edition was stuck on "Writing…" because its workflow had been lost |
+| The edition's status is the only control | Before each costly step, the workflow checks that its edition is still "writing", and quits if not. The app never tracks workflow runs | First built by saving each run's ID and cancelling it, but that tied the shared database to a process on one machine. The owner pointed this out; the status check works the same locally and on Vercel, and also clears editions whose workflow was lost |
+| Stopped stays stopped | The workflow only finishes editions still marked "writing" | A step already running when you press Stop still finishes, but its result is thrown away |
+| Local runs | In `npm run dev`, editions are durable: stopping the dev server pauses them, and the next `npm run dev` carries on. `next build` wipes their progress, so don't build while the dev server is running | That's how the stuck edition happened. See [ARCHITECTURE.md](ARCHITECTURE.md) |

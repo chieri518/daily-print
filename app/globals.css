@@ -169,3 +169,6 @@ a.button { display: inline-block; text-decoration: none; }
   .hero { grid-template-columns: 1fr; }
   .mini-paper { transform: none; }
 }
+.mini-comic { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; font-size: 0.8rem; text-align: center; }
+.mini-comic span { border: 1px solid #111; padding: 0.15rem 0; }
+form.inline { display: inline; }

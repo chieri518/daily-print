@@ -2,6 +2,8 @@
   "name": "The Morning Edition",
   "typeface": "classic",
   "paperSize": "letter",
+  "temperature": "fahrenheit",
+  "comicCast": "a skeptical gray cat and an over-excited pigeon",
   "location": "San Francisco Bay Area",
   "pages": [
     {

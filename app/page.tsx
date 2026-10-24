@@ -1,4 +1,5 @@
 import { GenerateButton, RefreshWhileWriting } from "./client";
+import { stopEdition } from "./actions";
 import { Landing } from "./landing";
 import { canGenerate, getReader } from "@/lib/supabase/server";
 
@@ -23,9 +24,21 @@ export default async function Home() {
         {editions?.map((e) => (
           <li key={e.id}>
             <span>{new Date(`${e.day}T12:00`).toLocaleDateString("en-US", { dateStyle: "full" })}</span>
-            {e.status === "ready" && <a href={`/editions/${e.id}`} target="_blank">Read PDF</a>}
-            {e.status === "writing" && <span className="muted">Writing… (a few minutes)</span>}
+            {e.status === "ready" && (
+              <a href={`/editions/${e.id}`} target="_blank">
+                Read PDF
+              </a>
+            )}
+            {e.status === "writing" && (
+              <span className="muted">
+                Writing… (a few minutes){" "}
+                <form action={stopEdition.bind(null, e.id)} className="inline">
+                  <button className="link">Stop</button>
+                </form>
+              </span>
+            )}
             {e.status === "failed" && <span className="muted">Failed</span>}
+            {e.status === "stopped" && <span className="muted">Stopped</span>}
           </li>
         ))}
       </ul>

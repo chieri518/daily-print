@@ -4,6 +4,7 @@ import { css } from "./paper-css.ts";
 import { crosswordHtml, jumbleHtml, sudokuHtml, triviaHtml, wordSearchHtml, type Puzzles } from "./puzzles.ts";
 import {
   area,
+  illustratedSlot,
   fontsUrl,
   LAYOUTS,
   MAIN_STORY_WORDS,
@@ -16,12 +17,13 @@ import {
 import { todayLine, weatherHtml } from "./weather.ts";
 
 // Builds the newspaper as one HTML document, one <section> per printed page.
-// `image` is the front-page illustration (a data URL), and `yesterday` holds the puzzles whose answers this paper prints.
+// `images` are the drawn illustration and comic (data URLs, or null), and `yesterday` holds the puzzles whose answers
+// this paper prints.
 export function layout(
   settings: Settings,
   date: string,
   paper: Paper,
-  image: string | null,
+  images: { illustration: string | null; comic: string | null },
   yesterday: Puzzles | null,
 ) {
   const fonts = TYPEFACES[settings.typeface];
@@ -36,10 +38,14 @@ export function layout(
     ${
       paper.birthdays.length ? `<p class="birthdays">Birthdays today: ${paper.birthdays.map(esc).join(", ")}</p>` : ""
     }`;
-  const illustration = image
-    ? `<figure class="illustration"><img src="${image}" alt=""></figure>`
-    : `<figure class="illustration empty"><figcaption>Illustration: ${esc(paper.illustration)}</figcaption></figure>`;
-  const illustrated = settings.pages[0].slots.findIndex((s) => !s.kind); // the first slot of stories on the front page
+  // The illustration goes with the story the editor chose for it, or nowhere if it chose none.
+  const { headline, scene } = paper.illustration;
+  const illustration = images.illustration
+    ? `<figure class="illustration"><img src="${images.illustration}" alt=""></figure>`
+    : `<figure class="illustration empty"><figcaption>Illustration: ${esc(scene)}</figcaption></figure>`;
+  const illustrated = illustratedSlot(settings.pages[0]);
+  const figureFor = (s: Story, page: number, slot: number) =>
+    scene && page === 0 && slot === illustrated && s.headline === headline ? illustration : "";
 
   const features: Record<Feature, () => string> = {
     weather: () => weatherHtml(paper.forecast, paper.weatherTip),
@@ -48,6 +54,13 @@ export function layout(
     wordSearch: () => wordSearchHtml(paper.puzzles.wordSearch),
     trivia: () => triviaHtml(paper.puzzles.trivia, yesterday?.trivia),
     jumble: () => jumbleHtml(paper.puzzles.jumble!, yesterday?.jumble),
+    // Without an image key, the comic prints as its four panels in words.
+    comic: () =>
+      images.comic
+        ? `<figure class="comic"><img src="${images.comic}" alt=""></figure>`
+        : `<div class="comic-text">${paper.comic.panels
+            .map((p) => `<p>${esc(p.scene)}${p.dialogue ? ` <b>“${esc(p.dialogue)}”</b>` : ""}</p>`)
+            .join("")}</div>`,
     wordOfTheDay: () => {
       const w = paper.wordOfTheDay;
       return `<div class="word-of-the-day"><p><b class="word">${esc(w.word)}</b> <i>${esc(w.partOfSpeech)}</i></p>
@@ -62,8 +75,8 @@ export function layout(
       const big = slotWords(i, page.layout, j) >= MAIN_STORY_WORDS;
       const content = section.kind
         ? features[section.kind]()
-        : `${lead ? story(lead, big ? "lead" : "", i === 0 && j === illustrated ? illustration : "") : ""}
-           ${others.map((s) => story(s)).join("")}`;
+        : `${lead ? story(lead, big ? "lead" : "", figureFor(lead, i, j)) : ""}
+           ${others.map((s) => story(s, "", figureFor(s, i, j))).join("")}`;
       return `<div class="slot" style="grid-area: ${area(j)}; --columns: ${slots[j].columns}">
         <h3 class="section-title">${esc(section.title)}</h3>
         ${content}

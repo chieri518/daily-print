@@ -9,10 +9,11 @@
 
 ## Technical
 
-- **Image provider:** OpenAI and Google are both supported. Compare them on paper: how well they hold the pen-and-ink style, how they print in grayscale, and cost. The model names were taken from docs that couldn't all be checked; confirm them on the first run.
+- **Image provider:** OpenAI (`gpt-image-2`) is confirmed to work and holds the pen-and-ink style well. Google is supported but untested; its model name still needs checking.
 - **Fitting text:** text that is too long now shrinks to fit, but a short page still leaves empty space at the bottom. If real editions show this, ask Claude to lengthen or cut stories based on the measured space.
 - **Smallest readable size:** is text shrunk to 7.5pt still readable when printed? Check on paper and raise the minimum if not.
-- **Which Claude model for which step:** a strong model for editing and writing, and maybe a cheaper one for sorting through research. Settle this once costs are measured.
+- **Which Claude model for which step:** stories use Opus, the extras use Sonnet. Sonnet for research and lower effort for writing would be faster still; compare editions side by side before switching.
+- **Research per section:** each section gets its own research call, including Opinion, whose editorial is about other stories in the paper. Is its research worth the time?
 - **Step length on Vercel:** each workflow step runs in one function call. Will the research step (web search) finish within the plan's function time limit? Measure it on the first deployed run.
 - **Fonts on Vercel:** the PDF loads Google Fonts over the network while rendering. Check the deployed PDFs use the right typefaces.
 

@@ -59,6 +59,17 @@ export async function generate(form: FormData) {
   revalidatePath("/");
 }
 
+// Stops an edition that's being written. The workflow sees the new status before its next step and quits.
+// This works even when the workflow was lost, so an edition never stays "writing" forever.
+export async function stopEdition(id: string) {
+  const reader = await requireReader();
+  const { error } = await reader.supabase.from("editions").select("id").eq("id", id).single(); // only your own
+  if (error) throw error;
+  const stopped = await admin().from("editions").update({ status: "stopped" }).eq("id", id).eq("status", "writing");
+  if (stopped.error) throw stopped.error;
+  revalidatePath("/");
+}
+
 // Stops reading birthdays from the reader's Google Calendar, and tells Google to cancel the access.
 export async function disconnectGoogle() {
   const reader = await requireReader();

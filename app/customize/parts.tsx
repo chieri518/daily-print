@@ -72,6 +72,14 @@ export function FeaturePreview({ kind }: { kind: Feature }) {
           ))}
         </span>
       );
+    case "comic":
+      return (
+        <span className="mini-comic">
+          {["🐱", "🐦", "🐱", "🐦"].map((face, i) => (
+            <span key={i}>{face}</span>
+          ))}
+        </span>
+      );
     case "wordOfTheDay":
       return (
         <span className="mini-word">

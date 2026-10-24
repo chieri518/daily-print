@@ -27,33 +27,37 @@ export const PAPER_SIZES = {
   a4: { label: "A4", width: "210mm", height: "297mm" },
 };
 
-export type Shape = "full" | "wide" | "tall" | "quarter" | "strip";
+// Wind speed follows the temperature: mph with Fahrenheit, km/h with Celsius.
+export const TEMPERATURES = { fahrenheit: "°F (Fahrenheit)", celsius: "°C (Celsius)" };
+
+export type Shape = "full" | "wide" | "tall" | "quarter" | "small" | "strip"; // small: shorter than a quarter page
 
 // Each page is a CSS grid of slots, filled in order (grid areas a, b, c, d). For each slot:
 // - shape: decides which sections fit (see `fits`)
-// - words, frontWords: about how many words fit on an inside page and on the front page (below the masthead, and next to
-//   the illustration in the first slot), measured at 10pt with a 10% margin
+// - words, frontWords: about how many words fit on an inside page and on the front page (below the masthead, and around
+//   the illustration where it goes; see `illustratedSlot`), measured at 10pt with a 10% margin
+// - picture: on slots that can hold the front-page illustration, how many more words fit when there isn't one
 // - columns: how many text columns its stories use
 export const LAYOUTS = {
   single: {
     label: "One section",
     grid: `"a" 1fr / 1fr`,
-    slots: [{ shape: "full", words: 690, frontWords: 400, columns: 3 }],
+    slots: [{ shape: "full", words: 690, frontWords: 290, picture: 260, columns: 3 }],
   },
   topTwo: {
     label: "Top + two below",
     grid: `"a a" 3fr "b c" 2fr / 1fr 1fr`,
     slots: [
-      { shape: "wide", words: 280, frontWords: 170, columns: 3 },
-      { shape: "quarter", words: 120, frontWords: 90, columns: 2 },
-      { shape: "quarter", words: 120, frontWords: 90, columns: 2 },
+      { shape: "wide", words: 280, frontWords: 220, columns: 3 },
+      { shape: "small", words: 120, frontWords: 90, columns: 2 },
+      { shape: "small", words: 120, frontWords: 90, columns: 2 },
     ],
   },
   halves: {
     label: "Two halves",
     grid: `"a" 1fr "b" 1fr / 1fr`,
     slots: [
-      { shape: "wide", words: 220, frontWords: 100, columns: 3 },
+      { shape: "wide", words: 220, frontWords: 220, columns: 3 },
       { shape: "wide", words: 220, frontWords: 220, columns: 3 },
     ],
   },
@@ -61,31 +65,35 @@ export const LAYOUTS = {
     label: "Two columns",
     grid: `"a b" 1fr / 1fr 1fr`,
     slots: [
-      { shape: "tall", words: 320, frontWords: 220, columns: 2 },
-      { shape: "tall", words: 320, frontWords: 260, columns: 2 },
+      { shape: "tall", words: 320, frontWords: 220, picture: 60, columns: 2 },
+      { shape: "tall", words: 320, frontWords: 250, picture: 60, columns: 2 },
     ],
   },
   quarters: {
     label: "Four quarters",
     grid: `"a b" 1fr "c d" 1fr / 1fr 1fr`,
     slots: [
-      { shape: "quarter", words: 150, frontWords: 50, columns: 2 },
+      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
       { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
       { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
       { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
     ],
   },
   stripMain: {
-    label: "Weather strip + main",
+    label: "Strip + main",
     grid: `"a" auto "b" 1fr / 1fr`,
     slots: [
       { shape: "strip", words: 0, frontWords: 0, columns: 3 },
-      { shape: "full", words: 480, frontWords: 220, columns: 3 },
+      { shape: "full", words: 370, frontWords: 210, picture: 140, columns: 3 }, // sized for the taller comic strip
     ],
   },
 } satisfies Record<
   string,
-  { label: string; grid: string; slots: { shape: Shape; words: number; frontWords: number; columns: number }[] }
+  {
+    label: string;
+    grid: string;
+    slots: { shape: Shape; words: number; frontWords: number; picture?: number; columns: number }[];
+  }
 >;
 
 // Grid area name of a slot.
@@ -93,6 +101,17 @@ export const area = (slot: number) => "abcd"[slot];
 
 // Slots with at least this many words hold a main story and shorter ones. Smaller slots hold one story.
 export const MAIN_STORY_WORDS = 250;
+
+// The front-page slot that gets the illustration: the first slot of stories that is full or tall, so the 3:1 picture
+// leaves room for text. -1 if there is none, and then no illustration is made.
+export function illustratedSlot(frontPage: Page) {
+  return frontPage.slots.findIndex(
+    (s, j) => !s.kind && ["full", "tall"].includes(LAYOUTS[frontPage.layout].slots[j].shape),
+  );
+}
+
+export const hasSection = (settings: Settings, kind: Feature) =>
+  settings.pages.some((p) => p.slots.some((s) => s.kind === kind));
 
 export function slotWords(page: number, layout: keyof typeof LAYOUTS, slot: number) {
   const s = LAYOUTS[layout].slots[slot];
@@ -118,30 +137,38 @@ export const FEATURES = {
   wordSearch: {
     title: "Word Search",
     about: "words from today's stories hidden in a grid",
-    shapes: ["quarter", "wide", "tall", "full"],
+    shapes: ["quarter", "small", "wide", "tall", "full"],
     frontPage: false,
   },
   trivia: {
     title: "News Quiz",
     about: "five questions about today's stories",
-    shapes: ["quarter", "wide", "tall", "full"],
+    shapes: ["quarter", "small", "wide", "tall", "full"],
     frontPage: false,
   },
   jumble: {
     title: "Jumble",
     about: "four scrambled words from today's stories",
-    shapes: ["quarter", "wide", "tall", "full"],
+    shapes: ["quarter", "small", "wide", "tall", "full"],
     frontPage: false,
+  },
+  comic: {
+    title: "Comic Strip",
+    about: "a cute four-panel comic about the day's news, starring your cast",
+    shapes: ["strip"],
+    frontPage: true,
   },
   wordOfTheDay: {
     title: "Word of the Day",
     about: "an interesting word, what it means and how to use it",
-    shapes: ["strip", "quarter", "wide", "tall", "full"],
+    shapes: ["strip", "quarter", "small", "wide", "tall", "full"],
     frontPage: true,
   },
 } satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
 
 // `guide` tells the editor how to write in that tone.
+export const DEFAULT_CAST = "a skeptical gray cat and an over-excited pigeon";
+
 export const TONES = {
   straight: { label: "Straight news", guide: "straight news: neutral and factual" },
   conversational: { label: "Conversational", guide: "conversational: warm and plain, like explaining to a friend" },
@@ -173,6 +200,8 @@ export const Settings = z.object({
   name: text(60).min(1),
   typeface: choice(TYPEFACES),
   paperSize: choice(PAPER_SIZES),
+  temperature: choice(TEMPERATURES).default("fahrenheit"), // settings saved before this choice get °F
+  comicCast: text(200).min(1).default(DEFAULT_CAST), // who stars in the comic strip, every day
   location: text(100).min(1),
   pages: z.array(Page).min(1).max(MAX_PAGES), // the first is the front page
   customSections: z.array(Section).max(30),

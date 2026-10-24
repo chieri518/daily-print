@@ -12,7 +12,7 @@ footer { display: flex; justify-content: space-between; border-top: 1px solid #0
 .masthead { text-align: center; border-bottom: 3px double #000; margin-bottom: 1em; }
 .masthead h1 { font-family: var(--masthead), serif; font-size: 5em; font-weight: normal; line-height: 1.15; }
 .masthead .meta { display: flex; justify-content: space-between; border-top: 1px solid #000; padding: 3pt 0; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; }
-.illustration { height: 1.5in; margin-bottom: 0.7em; }
+.illustration { aspect-ratio: 3 / 1; margin-bottom: 0.7em; }
 .illustration img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.1); }
 .illustration.empty { display: flex; align-items: flex-end; border: 1px dashed #000; padding: 0.5em; }
 .illustration figcaption { font-size: 0.8em; font-style: italic; }
@@ -80,4 +80,8 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
 .word-of-the-day p { margin-bottom: 0.3em; }
 .word-of-the-day .word { font-family: var(--headline), serif; font-size: 1.6em; }
 .word-of-the-day .example { font-style: italic; }
+
+.comic img { width: 100%; aspect-ratio: 3 / 1; object-fit: contain; filter: grayscale(1); }
+.comic-text { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5em; }
+.comic-text p { border: 1px solid #000; padding: 0.4em; font-size: 0.85em; }
 `;

@@ -4,6 +4,7 @@ import { esc } from "./html.ts";
 export type Forecast = {
   place: string;
   unit: "°F" | "°C";
+  windUnit: "mph" | "km/h";
   days: { date: string; code: number; high: number; low: number; feelsLike: number; rain: number; wind: number }[];
   sunrise: string; // e.g. "7:26 am"
   sunset: string;
@@ -20,24 +21,23 @@ async function geocode(location: string) {
       words.slice(0, n).join(" "),
     )}`;
     const { results } = await (await fetch(url)).json();
-    if (results?.length)
-      return results[0] as { name: string; latitude: number; longitude: number; country_code: string };
+    if (results?.length) return results[0] as { name: string; latitude: number; longitude: number };
   }
   return null;
 }
 
 // Returns null if the location can't be found, so the paper still prints without a forecast.
-export async function getForecast(location: string): Promise<Forecast | null> {
+export async function getForecast(location: string, temperature: "fahrenheit" | "celsius"): Promise<Forecast | null> {
   const place = await geocode(location);
   if (!place) return null;
-  const us = place.country_code === "US";
+  const fahrenheit = temperature === "fahrenheit";
   const params = new URLSearchParams({
     latitude: String(place.latitude),
     longitude: String(place.longitude),
     daily:
       "weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset,daylight_duration",
-    temperature_unit: us ? "fahrenheit" : "celsius",
-    wind_speed_unit: us ? "mph" : "kmh",
+    temperature_unit: temperature,
+    wind_speed_unit: fahrenheit ? "mph" : "kmh",
     timezone: "auto",
     forecast_days: "5",
   });
@@ -45,7 +45,8 @@ export async function getForecast(location: string): Promise<Forecast | null> {
   const minutes = Math.round(d.daylight_duration[0] / 60);
   return {
     place: place.name,
-    unit: us ? "°F" : "°C",
+    unit: fahrenheit ? "°F" : "°C",
+    windUnit: fahrenheit ? "mph" : "km/h",
     days: d.time.map((date: string, i: number) => ({
       date,
       code: d.weather_code[i],
@@ -111,7 +112,7 @@ export function describeForecast(f: Forecast) {
     (d) =>
       `${d.date}: ${condition(d.code).label}, high ${d.high}${f.unit}, low ${d.low}${f.unit}, ${
         d.rain
-      }% chance of rain, wind ${d.wind}`,
+      }% chance of rain, wind ${d.wind} ${f.windUnit}`,
   );
   const air = f.airQuality !== null ? `Air quality today: ${f.airQuality} (${airLabel(f.airQuality)})` : "";
   return [...days, air].join("\n");
@@ -134,7 +135,7 @@ export function weatherHtml(f: Forecast | null, tip: string) {
       ${ICONS[icon]}
       <span class="condition">${label}</span>
       <span class="temps"><b>${d.high}°</b> / ${d.low}°</span>
-      <span class="small">Rain ${d.rain}% · Wind ${d.wind}</span>
+      <span class="small">Rain ${d.rain}% · Wind ${d.wind} ${f.windUnit}</span>
     </div>`;
   });
   const almanac = [

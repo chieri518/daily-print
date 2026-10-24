@@ -5,7 +5,16 @@ import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { disconnectGoogle, saveSettings } from "../actions";
 import { PageBuilder, type Draft } from "./page-builder";
-import { fontsUrl, PAPER_SIZES, READING_LEVELS, TONES, TYPEFACES, type Settings } from "@/lib/settings";
+import {
+  DEFAULT_CAST,
+  fontsUrl,
+  PAPER_SIZES,
+  READING_LEVELS,
+  TEMPERATURES,
+  TONES,
+  TYPEFACES,
+  type Settings,
+} from "@/lib/settings";
 
 const TABS = ["Pages", "Paper & style", "Writing & sources"];
 
@@ -36,6 +45,8 @@ export function Customizer({ initial, googleConnected }: { initial: Settings; go
     ? "Add a paper name in Paper & style."
     : !settings.location.trim()
     ? "Add a location in Paper & style."
+    : !settings.comicCast.trim()
+    ? "Describe your comic cast in Paper & style."
     : null;
 
   // Warn before closing or reloading the page with unsaved changes.
@@ -91,6 +102,15 @@ export function Customizer({ initial, googleConnected }: { initial: Settings; go
             <Options options={PAPER_SIZES} />
           </select>
         </label>
+        <label>
+          Temperature
+          <select
+            value={settings.temperature}
+            onChange={(e) => set({ temperature: e.target.value as Settings["temperature"] })}
+          >
+            <Options options={TEMPERATURES} />
+          </select>
+        </label>
         <fieldset className="typefaces wide">
           <legend>Typeface</legend>
           {Object.entries(TYPEFACES).map(([key, t]) => (
@@ -112,6 +132,17 @@ export function Customizer({ initial, googleConnected }: { initial: Settings; go
             </label>
           ))}
         </fieldset>
+        <label className="wide">
+          <span>
+            Comic strip cast <span className="muted">(who stars in your Comic Strip section, every day)</span>
+          </span>
+          <input
+            value={settings.comicCast}
+            onChange={(e) => set({ comicCast: e.target.value })}
+            placeholder={DEFAULT_CAST}
+            maxLength={200}
+          />
+        </label>
         <div className="wide">
           <b>Birthdays</b>
           <p className="muted">

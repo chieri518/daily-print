@@ -3,8 +3,9 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { useClaudeCode } from "../lib/claude.ts";
 import { research, write, type Paper } from "../lib/editor.ts";
-import { illustrate } from "../lib/illustrate.ts";
+import { drawPictures } from "../lib/illustrate.ts";
 import { layout } from "../lib/layout.ts";
+import { step } from "../lib/log.ts";
 import { makePuzzles } from "../lib/puzzles.ts";
 import { renderPdf } from "../lib/render.ts";
 import { Settings } from "../lib/settings.ts";
@@ -20,10 +21,15 @@ console.log(
     useClaudeCode ? "Claude Code" : "the Claude API"
   }. This takes a few minutes...`,
 );
-const forecast = await getForecast(settings.location);
-const notes = await research(settings, date);
-const { edition, usd } = await write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "");
-const image = await illustrate(edition.illustration);
+const started = Date.now();
+const [forecast, notes] = await Promise.all([
+  step("Getting the forecast", () => getForecast(settings.location, settings.temperature)),
+  step("Researching the news", () => research(settings, date)),
+]);
+const { edition, usd } = await step("Writing the edition", () =>
+  write(settings, date, notes.notes, forecast ? describeForecast(forecast) : ""),
+);
+const images = await step("Drawing the pictures", () => drawPictures(settings, edition));
 // Birthdays need a Google Calendar connected in the web app, so this command prints without them.
 const paper: Paper = { ...edition, forecast, puzzles: makePuzzles(day, edition), birthdays: [] };
 const costUsd = notes.usd + usd;
@@ -37,13 +43,17 @@ const previous = readdirSync("editions")
   .at(-1);
 const yesterday = previous ? JSON.parse(readFileSync(`editions/${previous}`, "utf8")).paper?.puzzles ?? null : null;
 
-const { pdf, overflowing } = await renderPdf(layout(settings, date, paper, image, yesterday));
+const { pdf, overflowing } = await step("Printing the PDF", () =>
+  renderPdf(layout(settings, date, paper, images, yesterday)),
+);
 writeFileSync(`${file}.pdf`, pdf);
 
-if (!image) console.warn("No illustration: add OPENAI_API_KEY or GEMINI_API_KEY to .env to draw one.");
+if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+  console.warn("No pictures: add OPENAI_API_KEY or GEMINI_API_KEY to .env to draw the illustration and comic.");
+}
 if (overflowing.length) console.warn(`Warning: text is cut off on page ${overflowing.join(", ")}.`);
 console.log(
-  `Saved ${file}.pdf. Cost: $${costUsd.toFixed(2)}${
+  `Saved ${file}.pdf in ${Math.round((Date.now() - started) / 60000)} minutes. Cost: $${costUsd.toFixed(2)}${
     useClaudeCode ? " (estimate; your Claude subscription covers it)" : ""
   } plus the illustration`,
 );
