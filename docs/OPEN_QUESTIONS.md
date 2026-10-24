@@ -1,41 +1,34 @@
 # Open questions
 
+Unknowns still to resolve. When one is answered, move the answer to [DECISIONS.md](DECISIONS.md).
+
 ## Product
 
-- **Date and edition:** on-demand editions use the browser's time zone. Scheduled editions will need a time zone setting.
-- **Duplicates:** what happens when a big story fits several of the user's topics?
+- **Duplicates:** what happens when a big story fits several of the reader's sections?
 - **Content safety:** are any topics excluded by default (for example graphic violence)? How should paywalled sources be handled?
-- **Answers when there's no edition yesterday:** yesterday's answers come from the reader's most recent earlier edition, which may be several days old, or from earlier the same day. Is that OK?
+- **Yesterday's answers:** they come from the reader's most recent earlier edition, which may be several days old, or from earlier the same day. Is that OK?
+- **Missed papers:** a paper not printed within an hour is skipped. Should the reader be told?
+- **Paper use:** a 4-page edition uses 4 sheets. Should papers fit on fewer pages?
+
+## Writing and layout
+
+- **Short pages:** text that's too long shrinks to fit, but a short page leaves empty space. If real editions show this, ask Claude to lengthen or cut stories based on the measured space.
+- **Smallest readable size:** is text shrunk to 7.5pt readable on paper?
+- **Word counts:** measured with sample text in the Classic typeface. Other typefaces and real headlines may fit more or less.
+- **Faster or cheaper:** Sonnet for research, or lower effort for writing, would be faster still. Compare editions side by side before switching. Is the Opinion section's research worth its time, when its editorial is about other stories?
+- **Sources:** blocked sources are only an instruction to Claude. Web search can block domains for real, but readers type names ("The Daily Mail") rather than domains. Is the instruction enough?
+- **More layouts:** are six enough? Should readers be able to resize slots?
 
 ## Technical
 
-- **Image provider:** OpenAI (`gpt-image-2`) is confirmed to work and holds the pen-and-ink style well. Google is supported but untested; its model name still needs checking.
-- **Fitting text:** text that is too long now shrinks to fit, but a short page still leaves empty space at the bottom. If real editions show this, ask Claude to lengthen or cut stories based on the measured space.
-- **Smallest readable size:** is text shrunk to 7.5pt still readable when printed? Check on paper and raise the minimum if not.
-- **Which Claude model for which step:** stories use Opus, the extras use Sonnet. Sonnet for research and lower effort for writing would be faster still; compare editions side by side before switching.
-- **Research per section:** each section gets its own research call, including Opinion, whose editorial is about other stories in the paper. Is its research worth the time?
-- **Step length on Vercel:** each workflow step runs in one function call. Will the research step (web search) finish within the plan's function time limit? Measure it on the first deployed run.
-- **Fonts on Vercel:** the PDF loads Google Fonts over the network while rendering. Check the deployed PDFs use the right typefaces.
-
-## Customization
-
-- **Enforcing sources:** blocked sources are only an instruction to Claude. The API's web search can block domains for real, but readers may type names ("The Daily Mail") rather than domains. Is the instruction enough?
-- **Other languages:** the paper is English only for now. Spanish would be easy to add. Chinese and Japanese need fonts with their characters, different puzzles, translated print labels and new word counts.
-- **More layouts:** are four enough? Should readers be able to resize slots?
-- **Word counts per slot:** measured with sample text in the Classic typeface at 10pt. Other typefaces and real headlines may fit more or less. Check against real editions.
+- **Vercel:** do the PDF (Chromium) and its fonts work there, and does each step finish within the time limit? Check on the first deployed edition.
+- **Google pictures:** supported but untested; the model name needs checking.
 
 ## Google
 
-- **Verification:** reading Google Calendar is a sensitive permission. Before opening the app to the public, Google must verify it; until then, users see an "unverified app" warning, and only up to 100 users can connect.
-- **Birthday names:** Google Calendar names birthday events after the contact, sometimes with "'s birthday" added, which we remove. Check real names print correctly.
+- **Verification:** reading Google Calendar is a sensitive permission. Before opening the app to the public, Google must verify it. Until then, users see an "unverified app" warning, and at most 100 can connect.
 
 ## Legal
 
 - Rules for quoting and summarizing news: how long a summary can be, how to attribute it, and whether to show links or QR codes in print.
 - Terms of use for AI-generated images used in a product.
-
-## Printing
-
-- **Paper use:** the P1102w only prints one side at a time, so a 4-page edition uses 4 sheets. Is that OK, or should the paper fit on fewer pages?
-- **Pairing:** how does a reader link a printer box to their account? For example, with a code shown in the web app.
-- **Missed mornings:** what if the box is offline or the printer is out of paper? Print late, skip that day, or notify the reader?

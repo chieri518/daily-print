@@ -1,13 +1,14 @@
-import { FatalError } from "workflow";
-import { research, write, type Edition, type Paper } from "../lib/editor.ts";
+import { FatalError, sleep } from "workflow";
+import { assemble, research, write, type Edition, type Paper } from "../lib/editor.ts";
 import { birthdays } from "../lib/google.ts";
 import { drawPictures } from "../lib/illustrate.ts";
 import { layout } from "../lib/layout.ts";
 import { step } from "../lib/log.ts";
-import { makePuzzles, type Puzzles } from "../lib/puzzles.ts";
+import type { Puzzles } from "../lib/puzzles.ts";
 import { renderPdf } from "../lib/render.ts";
-import type { Settings } from "../lib/settings.ts";
+import { settingsFor, type Settings } from "../lib/settings.ts";
 import { admin } from "../lib/supabase/admin.ts";
+import { today } from "../lib/today.ts";
 import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts";
 
 // Writes one edition and saves its PDF. Each step is saved as it finishes, so a crash resumes where it stopped.
@@ -34,11 +35,36 @@ export async function makeEdition(id: string, userId: string, settings: Settings
   }
 }
 
+// A paper for the printer box: sleeps (using nothing) until 20 minutes before its print time, then makes the edition
+// with the reader's settings as they are by then. Stopping it while it sleeps cancels it.
+export async function scheduledEdition(id: string, userId: string, printAt: string) {
+  "use workflow";
+  await sleep(new Date(Date.parse(printAt) - 20 * 60 * 1000));
+  const woken = await wakeStep(id, userId, printAt);
+  if (woken) await makeEdition(id, userId, woken.settings, woken.date, woken.day);
+}
+
+// Starts writing a scheduled edition, unless the reader stopped it. Returns its settings, and the date of its print time.
+async function wakeStep(id: string, userId: string, printAt: string) {
+  "use step";
+  const db = admin();
+  const { data: started } = await db
+    .from("editions")
+    .update({ status: "writing" })
+    .eq("id", id)
+    .eq("status", "scheduled")
+    .select("id");
+  if (!started?.length) return null; // stopped while it slept
+  const settings = await settingsFor(db, userId);
+  return { settings, ...today(settings.timeZone, new Date(printAt)) };
+}
+
 // Quits the workflow if the reader stopped this edition. A step already running when they press Stop still finishes.
 async function stillWritingStep(id: string) {
   "use step";
-  const { data } = await admin().from("editions").select("status").eq("id", id).single();
-  if (data?.status !== "writing") throw new FatalError("Stopped by the reader");
+  const { data, error } = await admin().from("editions").select("status").eq("id", id).single();
+  if (error) throw error;
+  if (data.status !== "writing") throw new FatalError("Stopped by the reader");
 }
 
 async function forecastStep(location: string, temperature: Settings["temperature"]) {
@@ -104,12 +130,7 @@ type Parts = {
 
 async function printStep(id: string, userId: string, settings: Settings, date: string, parts: Parts, costUsd: number) {
   "use step";
-  const paper: Paper = {
-    ...parts.edition,
-    forecast: parts.forecast,
-    puzzles: makePuzzles(id, parts.edition),
-    birthdays: parts.names,
-  };
+  const paper = assemble(parts.edition, parts.forecast, id, parts.names);
   const { pdf, overflowing } = await step("Printing the PDF", () =>
     renderPdf(layout(settings, date, paper, parts.images, parts.yesterday)),
   );

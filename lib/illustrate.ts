@@ -1,6 +1,7 @@
 // Draws the front-page illustration and the comic strip with an image model. Uses OpenAI or Google, whichever has a key in
 // the environment (IMAGE_PROVIDER=openai or google picks one when both do). IMAGE_MODEL overrides the default model.
-// Both pictures are 3:1. They return null without a key or if drawing fails, so the paper still prints.
+// Both print 3:1: OpenAI draws them that shape; Google's widest is 21:9, trimmed slightly to fit.
+// They return null without a key or if drawing fails, so the paper still prints.
 
 import type { Edition } from "./editor.ts";
 import { hasSection, illustratedSlot, type Settings } from "./settings.ts";

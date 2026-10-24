@@ -6,8 +6,11 @@ import { redirect } from "next/navigation";
 import { start } from "workflow/api";
 import { Settings } from "@/lib/settings";
 import { disconnect } from "@/lib/google";
+import { newPrinterKey } from "@/lib/printer";
+import { scheduleNext } from "@/lib/schedule";
 import { admin } from "@/lib/supabase/admin";
-import { canGenerate, createClient, getReader, loadSettings } from "@/lib/supabase/server";
+import { canGenerate } from "@/lib/allowed";
+import { createClient, getReader, loadSettings } from "@/lib/supabase/server";
 import { today } from "@/lib/today";
 import { makeEdition } from "@/workflows/edition";
 
@@ -41,12 +44,13 @@ export async function saveSettings(json: string) {
     .from("papers")
     .upsert({ user_id: reader.id, settings, updated_at: new Date().toISOString() });
   if (error) throw error;
+  await scheduleNext(reader.id, settings); // the next paper for the printer box, or none if the print time is off
 }
 
 // Starts today's edition in the reader's time zone. It is written in the background and appears in the archive when ready.
 export async function generate(form: FormData) {
   const reader = await requireReader();
-  if (!canGenerate(reader)) throw new Error("Your account isn't allowed to generate editions yet.");
+  if (!canGenerate(reader.email)) throw new Error("Your account isn't allowed to generate editions yet.");
   const settings = await loadSettings(reader);
   const { date, day } = today(String(form.get("timeZone")));
   const { data, error } = await reader.supabase
@@ -59,13 +63,17 @@ export async function generate(form: FormData) {
   revalidatePath("/");
 }
 
-// Stops an edition that's being written. The workflow sees the new status before its next step and quits.
+// Stops an edition that's scheduled or being written. The workflow sees the new status before its next step and quits.
 // This works even when the workflow was lost, so an edition never stays "writing" forever.
 export async function stopEdition(id: string) {
   const reader = await requireReader();
   const { error } = await reader.supabase.from("editions").select("id").eq("id", id).single(); // only your own
   if (error) throw error;
-  const stopped = await admin().from("editions").update({ status: "stopped" }).eq("id", id).eq("status", "writing");
+  const stopped = await admin()
+    .from("editions")
+    .update({ status: "stopped" })
+    .eq("id", id)
+    .in("status", ["scheduled", "writing"]);
   if (stopped.error) throw stopped.error;
   revalidatePath("/");
 }
@@ -76,5 +84,17 @@ export async function disconnectGoogle() {
   const db = admin();
   const { data } = await db.from("google_connections").select("refresh_token").eq("user_id", reader.id).maybeSingle();
   if (data) await disconnect(data.refresh_token);
-  await db.from("google_connections").delete().eq("user_id", reader.id);
+  const { error } = await db.from("google_connections").delete().eq("user_id", reader.id);
+  if (error) throw error;
+}
+
+// Makes a new key for the reader's printer box, replacing any old one. It's shown once; only its hash is kept.
+export async function createPrinterKey() {
+  const reader = await requireReader();
+  const { key, hash } = newPrinterKey();
+  const { error } = await admin()
+    .from("printers")
+    .upsert({ user_id: reader.id, key_hash: hash, last_seen_at: null, created_at: new Date().toISOString() });
+  if (error) throw error;
+  return key;
 }

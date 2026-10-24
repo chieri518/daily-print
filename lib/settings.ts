@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import defaults from "../paper.json" with { type: "json" };
 
 // Choices readers make on the Customize page. Used by the page itself, the editor and the print layout.
 
@@ -119,7 +121,7 @@ export function slotWords(page: number, layout: keyof typeof LAYOUTS, slot: numb
 }
 
 // Sections that aren't stories. Each has a fixed design, so it needs a slot of the right shape.
-// Puzzles stay inside the paper; only the weather can go on the front page.
+// Puzzles stay inside the paper; the weather, comic and word of the day can go on the front page.
 export const FEATURES = {
   weather: {
     title: "Weather",
@@ -166,9 +168,9 @@ export const FEATURES = {
   },
 } satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
 
-// `guide` tells the editor how to write in that tone.
 export const DEFAULT_CAST = "a skeptical gray cat and an over-excited pigeon";
 
+// `guide` tells the editor how to write in that tone.
 export const TONES = {
   straight: { label: "Straight news", guide: "straight news: neutral and factual" },
   conversational: { label: "Conversational", guide: "conversational: warm and plain, like explaining to a friend" },
@@ -202,6 +204,11 @@ export const Settings = z.object({
   paperSize: choice(PAPER_SIZES),
   temperature: choice(TEMPERATURES).default("fahrenheit"), // settings saved before this choice get °F
   comicCast: text(200).min(1).default(DEFAULT_CAST), // who stars in the comic strip, every day
+  printTime: z
+    .string()
+    .regex(/^(\d\d:\d\d)?$/)
+    .default(""), // when the printer box prints the paper each morning, e.g. "06:30"; empty for no automatic paper
+  timeZone: z.string().default("America/Los_Angeles"), // the reader's, taken from their browser when they save
   location: text(100).min(1),
   pages: z.array(Page).min(1).max(MAX_PAGES), // the first is the front page
   customSections: z.array(Section).max(30),
@@ -211,6 +218,19 @@ export const Settings = z.object({
   blockedSources: z.array(text(100)).max(30),
   brief: text(2000),
 });
+
+// A reader's saved settings, or the defaults from paper.json if they have none (or saved an older format).
+export function settingsOrDefaults(saved: unknown): Settings {
+  const parsed = Settings.safeParse(saved);
+  return parsed.success ? parsed.data : Settings.parse(defaults);
+}
+
+// A reader's saved settings, read with a Supabase client that's allowed to see them.
+export async function settingsFor(db: SupabaseClient, userId: string) {
+  const { data, error } = await db.from("papers").select("settings").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return settingsOrDefaults(data?.settings);
+}
 
 export type Section = z.infer<typeof Section>;
 export type Feature = keyof typeof FEATURES;
@@ -232,7 +252,7 @@ export const PRESET_SECTIONS: Section[] = [
   ...Object.entries(FEATURES).map(([kind, f]) => ({ title: f.title, about: f.about, kind: kind as Feature })),
 ];
 
-// Whether a section can go in a slot of this shape on this page. Stories fit any slot but the weather strip.
+// Whether a section can go in a slot of this shape on this page. Stories fit any slot but a strip.
 export function fits(section: Section, page: number, shape: Shape) {
   if (!section.kind) return shape !== "strip";
   const feature = FEATURES[section.kind];

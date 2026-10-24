@@ -8,17 +8,19 @@ How Daily Print works today, and what's planned. Decisions behind it are in [DEC
 flowchart LR
   subgraph You["Reader"]
     BROWSER["Browser<br/>landing · Customize · Editions"]
-    BOX["Printer box (planned)<br/>Raspberry Pi + printer"]
+    BOX["Printer box<br/>Raspberry Pi + printer"]
   end
 
   subgraph App["Next.js app (Vercel, or npm run dev)"]
     PAGES["Pages and server actions<br/>sign in · save settings · Generate · Stop"]
+    CRON["Scheduler<br/>once a day"]
+    PAPI["Printer API<br/>next paper · report"]
     WF["Edition workflow<br/>a background job that makes one edition"]
   end
 
   subgraph Supabase
     AUTH["Auth<br/>Google sign-in"]
-    DB[("Database<br/>papers · editions · google_connections")]
+    DB[("Database<br/>papers · editions · printers · google_connections")]
     FILES[("Storage<br/>edition PDFs")]
   end
 
@@ -33,19 +35,26 @@ flowchart LR
   PAGES --> AUTH
   PAGES --> DB
   PAGES -- "Generate starts" --> WF
+  PAGES -- "saving a print time schedules" --> WF
+  CRON -- "schedules each reader's next paper" --> WF
   PAGES -- "PDF link" --> FILES
   WF -- "reads status, saves the edition" --> DB
   WF -- "saves the PDF" --> FILES
   WF --> CLAUDE & IMG & METEO & GCAL
-  BOX -. "asks for today's PDF (planned)" .-> FILES
+  BOX -- "every 2 minutes: anything to print?" --> PAPI
+  PAPI --> DB
+  PAPI -- "PDF link" --> FILES
 ```
 
 | Part | What it does | Code |
 |---|---|---|
 | **Pages and server actions** | The screens, plus the small server functions they call: save settings, start an edition, stop one, connect Google | [app/](../app/) |
 | **Edition workflow** | Makes one edition from start to finish, in steps (below) | [workflows/edition.ts](../workflows/edition.ts) |
+| **Scheduler** | Schedules each reader's next paper for the printer box | [lib/schedule.ts](../lib/schedule.ts), [app/api/cron](../app/api/cron/route.ts) |
+| **Printer API** | Answers the printer box: the paper to print, if any, and its report afterwards | [app/api/printer](../app/api/printer/), [lib/printer.ts](../lib/printer.ts) |
+| **Printer box** | A Raspberry Pi that checks every 2 minutes, prints the paper and reports back | [public/printer/](../public/printer/), [PRINTER_SETUP.md](PRINTER_SETUP.md) |
 | **Edition pipeline** | The work itself, shared by the workflow and `npm run paper`: research, writing, pictures, puzzles, layout, PDF | [lib/](../lib/) |
-| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your Google connection (`google_connections`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
+| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
 
 ## Making an edition
 
@@ -64,9 +73,12 @@ Before each costly step, the workflow checks that the edition is still **writing
 
 ```mermaid
 stateDiagram-v2
+  [*] --> scheduled: print time saved, or the daily scheduler
+  scheduled --> writing: 20 minutes before the print time
   [*] --> writing: Generate
   writing --> ready: PDF saved
   writing --> failed: an error
+  scheduled --> stopped: Cancel
   writing --> stopped: Stop
 ```
 
@@ -94,11 +106,23 @@ Two things to know about local runs:
 - **Stopping `npm run dev` only pauses editions.** They carry on the next time it starts. Use **Stop** to end one.
 - **`next build` deletes `.next`, including the progress of editions being written.** Don't build while the dev server is running. A lost edition stays **writing** until you press Stop.
 
+## Printing every morning
+
+Readers set a **print time** in Customize. Their time zone comes from their browser.
+
+1. **Scheduling.** Each reader's next paper is added as a **scheduled** edition, with the moment it should print (`print_at`). This happens when they save their settings, and once a day for everyone, from a Vercel cron job (see [vercel.json](../vercel.json)). Vercel's free plan only allows a job once a day, at a time that can drift by up to an hour, so the job schedules the **next** paper rather than making it.
+2. **Waiting.** Each scheduled paper is a workflow that **sleeps** until 20 minutes before its print time. Sleeping uses no computing. Changing the print time cancels the waiting paper and schedules a new one.
+3. **Making it.** The workflow wakes, sets the edition to **writing**, loads the reader's settings as they are by then, and makes the edition as usual.
+4. **Printing.** The printer box asks the printer API every 2 minutes whether there's a paper. It gets one only when the paper is ready, its print time has come, and it's less than an hour late. It downloads the PDF, prints it, and reports **printed** or the error.
+5. **Skipping.** A paper not printed within an hour of its print time is skipped (printer off, out of paper, box offline). The Editions page says what happened: "Prints at 6:30 am", "Printed at 6:31 am", or "Not printed".
+
+**The printer key.** The box proves which reader it belongs to with a secret key, made with **Set up a printer box** in Customize. The key is shown once, inside a setup command to run on the Pi. The app keeps only a scrambled copy (a hash), so the key can't be read back from the database. The Pi saves the key in `/etc/daily-print.conf` and sends it with every request. Making a new key replaces the old one, which stops working.
+
 ## Without the web app: `npm run paper`
 
 [scripts/paper.ts](../scripts/paper.ts) runs the same pipeline in one go, in the terminal, from [paper.json](../paper.json), and saves the PDF to `editions/`. It doesn't use the workflow or Supabase, so it doesn't resume: Ctrl+C ends it. With `USE_CLAUDE_CODE=1`, Claude runs through Claude Code on your subscription instead of the API key. That's for testing on your own computer only.
 
 ## Planned
 
-- **Scheduler:** start each reader's edition early enough to be ready at their print time (a Vercel cron job that starts the same workflow).
-- **Printer box:** a Raspberry Pi that downloads the morning's PDF and prints it. The hardware works ([PRINTER_SETUP.md](PRINTER_SETUP.md)); the software isn't built yet.
+- **Pairing with a code** instead of copying a key, for readers who aren't comfortable with a terminal.
+- **Printing a paper made with Generate**, on demand.

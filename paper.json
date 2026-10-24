@@ -4,6 +4,8 @@
   "paperSize": "letter",
   "temperature": "fahrenheit",
   "comicCast": "a skeptical gray cat and an over-excited pigeon",
+  "printTime": "",
+  "timeZone": "America/Los_Angeles",
   "location": "San Francisco Bay Area",
   "pages": [
     {

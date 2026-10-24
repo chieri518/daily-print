@@ -40,7 +40,9 @@ export async function connect(code: string, redirectUri: string): Promise<string
 }
 
 export async function disconnect(refreshToken: string) {
-  await fetch(`https://oauth2.googleapis.com/revoke?token=${refreshToken}`, { method: "POST" });
+  await fetch(`https://oauth2.googleapis.com/revoke?${new URLSearchParams({ token: refreshToken })}`, {
+    method: "POST",
+  });
 }
 
 // The names of people whose birthday is on `day` (YYYY-MM-DD), from the birthdays Google keeps for your contacts.

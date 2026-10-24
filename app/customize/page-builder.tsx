@@ -163,7 +163,7 @@ export function PageBuilder({
         <span>
           Go back to:{" "}
           <button type="button" className="link" onClick={() => change(DEFAULT_PAGES)}>
-            Default template
+            Default pages
           </button>
         </span>
         <button type="button" className="link" onClick={undo} disabled={!history.length}>

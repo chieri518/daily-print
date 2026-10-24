@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import defaults from "../../paper.json" with { type: "json" };
-import { Settings } from "../settings.ts";
+import { settingsFor } from "../settings.ts";
 
 // A Supabase client that acts as the signed-in reader, so row-level security applies.
 export async function createClient() {
@@ -27,16 +26,9 @@ export async function getReader() {
   return { supabase, id: data.claims.sub, email: data.claims.email ?? "" };
 }
 
-export type Reader = NonNullable<Awaited<ReturnType<typeof getReader>>>;
-
-// Each edition costs real money, so only emails in ALLOWED_EMAILS can generate one.
-export function canGenerate(reader: Reader) {
-  return (process.env.ALLOWED_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).includes(reader.email.toLowerCase());
-}
+type Reader = NonNullable<Awaited<ReturnType<typeof getReader>>>;
 
 // The reader's saved settings, or the defaults from paper.json if they have none (or saved an older format).
-export async function loadSettings(reader: Reader) {
-  const { data } = await reader.supabase.from("papers").select("settings").eq("user_id", reader.id).maybeSingle();
-  const saved = Settings.safeParse(data?.settings);
-  return saved.success ? saved.data : Settings.parse(defaults);
+export function loadSettings(reader: Reader) {
+  return settingsFor(reader.supabase, reader.id);
 }

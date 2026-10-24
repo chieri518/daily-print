@@ -2,7 +2,7 @@
 
 How to set up a **Raspberry Pi Zero W** to print Daily Print on an **HP LaserJet Pro P1102w** over USB.
 
-**Status:** works. Tested on 2026-10-23: the Pi printed a full edition. For now you send the PDF to the Pi by hand; printing every morning on its own comes later (see [TODO.md](TODO.md)).
+**Status:** printing works (tested 2026-10-23). Steps 1–5 set up the printer; step 6 connects the box to your account, so it prints your paper every morning on its own.
 
 ## What you need
 
@@ -83,9 +83,19 @@ The upgrade takes 30 minutes or more. After the reboot, wait 3 minutes and conne
    ```
 3. `lpstat -o` lists the job until the printer has it all. A 4-page edition prints on 4 sheets, since the P1102w only prints one side at a time.
 
+## 6. Print every morning
+
+1. In the web app, open **Customize → Paper & style → Printing**. Set a **print time** and **Save**.
+2. Click **Set up a printer box**. It shows a command with your new printer key. The key is shown only once.
+3. On the Pi, run that command. It saves the app's address and the key in `/etc/daily-print.conf`, and checks for a paper every 2 minutes.
+4. The Customize page shows when the box last checked in. To see what it did, run `tail /var/log/daily-print.log` on the Pi.
+
+**Testing with the app running on your Mac** (`npm run dev`): the command says `localhost`, which on the Pi means the Pi itself. Replace both `http://localhost:3000` with your Mac's address, from `ipconfig getifaddr en0` on the Mac, for example `http://10.0.0.8:3000`. Your Mac must stay awake.
+
 ## If something goes wrong
 
 - **ssh times out:** the Pi is still starting, or its Wi-Fi dropped. Wait a minute and try again with `ssh -4`.
 - **"Permission denied":** wrong username or password. If you don't know them, write the card again (step 1).
 - **`lsusb` doesn't show the printer:** use the **USB** port, not PWR, and try another OTG adapter.
-- **Nothing prints:** read the print log with `sudo tail -30 /var/log/cups/error_log`.
+- **Nothing prints:** read the print log with `sudo tail -30 /var/log/cups/error_log`, and the box's own log with `tail /var/log/daily-print.log`.
+- **"error: 401" in the log:** the app doesn't recognize the key: it was replaced or mistyped. Make a new key in Customize and run the new command.

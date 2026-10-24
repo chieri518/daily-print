@@ -37,7 +37,7 @@ export function Landing() {
 
       <section className="printer">
         <h2>
-          The printer box <span className="soon">Coming soon</span>
+          The printer box
         </h2>
         <p>
           A tiny Raspberry Pi next to your printer fetches the paper while you sleep. It&apos;s waiting in the tray when

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { disconnectGoogle, saveSettings } from "../actions";
 import { PageBuilder, type Draft } from "./page-builder";
+import { Printing } from "./printing";
 import {
   DEFAULT_CAST,
   fontsUrl,
@@ -24,7 +25,15 @@ const lines = (text: string) =>
     .map((line) => line.trim())
     .filter(Boolean);
 
-export function Customizer({ initial, googleConnected }: { initial: Settings; googleConnected: boolean }) {
+export function Customizer({
+  initial,
+  googleConnected,
+  printer,
+}: {
+  initial: Settings;
+  googleConnected: boolean;
+  printer: { lastSeenAt: string | null } | null;
+}) {
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [pages, setPages] = useState<Draft[]>(initial.pages);
@@ -58,7 +67,10 @@ export function Customizer({ initial, googleConnected }: { initial: Settings; go
   }, [unsaved]);
 
   const save = async () => {
-    await saveSettings(json);
+    // Save the browser's time zone too, so the print time means the reader's morning.
+    await saveSettings(
+      JSON.stringify({ ...JSON.parse(json), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    );
     setSavedJson(json);
     setSavedOnce(true);
   };
@@ -169,6 +181,7 @@ export function Customizer({ initial, googleConnected }: { initial: Settings; go
             </a>
           )}
         </div>
+        <Printing printTime={settings.printTime} setPrintTime={(printTime) => set({ printTime })} printer={printer} />
       </div>
 
       <div className="fields" hidden={tab !== "Writing & sources"}>

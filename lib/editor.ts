@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
-import type { Puzzles } from "./puzzles.ts";
+import { makePuzzles, type Puzzles } from "./puzzles.ts";
 import {
   FEATURES,
   illustratedSlot,
@@ -80,6 +80,12 @@ export type Edition = z.infer<typeof Stories> & z.infer<typeof Extras>;
 // Birthdays are names from the reader's Google Calendar; they never go to Claude.
 export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles; birthdays: string[] };
 
+// Puts the paper together: what Claude wrote, plus the forecast, the puzzles made by code (seeded, so making the same
+// edition again gives the same puzzles) and today's birthdays.
+export function assemble(edition: Edition, forecast: Forecast | null, seed: string, birthdays: string[]): Paper {
+  return { ...edition, forecast, puzzles: makePuzzles(seed, edition), birthdays };
+}
+
 // Every section of stories in the paper. Weather and puzzles are made separately.
 const storySections = (settings: Settings) => settings.pages.flatMap((p) => p.slots.filter((s) => !s.kind));
 
@@ -124,7 +130,7 @@ function preferences(settings: Settings) {
     .join("\n");
 }
 
-// Step 1: research today's news with web search, one section at a time, all at once. Returns notes, not articles.
+// Step 1: research today's news with web search: one Claude call per section, in parallel. Returns notes, not articles.
 export async function research(settings: Settings, date: string) {
   const sections = storySections(settings);
   const results = await Promise.all(

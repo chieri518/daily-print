@@ -26,8 +26,17 @@ async function geocode(location: string) {
   return null;
 }
 
-// Returns null if the location can't be found, so the paper still prints without a forecast.
-export async function getForecast(location: string, temperature: "fahrenheit" | "celsius"): Promise<Forecast | null> {
+// Returns null if the location can't be found or the weather service fails, so the paper still prints without it.
+export async function getForecast(location: string, temperature: "fahrenheit" | "celsius") {
+  try {
+    return await fetchForecast(location, temperature);
+  } catch (error) {
+    console.warn(`The forecast isn't available: ${error}`);
+    return null;
+  }
+}
+
+async function fetchForecast(location: string, temperature: "fahrenheit" | "celsius"): Promise<Forecast | null> {
   const place = await geocode(location);
   if (!place) return null;
   const fahrenheit = temperature === "fahrenheit";

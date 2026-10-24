@@ -2,11 +2,10 @@
 // Output goes to editions/YYYY-MM-DD.pdf (+ .json with the text, puzzles and cost).
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { useClaudeCode } from "../lib/claude.ts";
-import { research, write, type Paper } from "../lib/editor.ts";
+import { assemble, research, write } from "../lib/editor.ts";
 import { drawPictures } from "../lib/illustrate.ts";
 import { layout } from "../lib/layout.ts";
 import { step } from "../lib/log.ts";
-import { makePuzzles } from "../lib/puzzles.ts";
 import { renderPdf } from "../lib/render.ts";
 import { Settings } from "../lib/settings.ts";
 import { today } from "../lib/today.ts";
@@ -31,7 +30,7 @@ const { edition, usd } = await step("Writing the edition", () =>
 );
 const images = await step("Drawing the pictures", () => drawPictures(settings, edition));
 // Birthdays need a Google Calendar connected in the web app, so this command prints without them.
-const paper: Paper = { ...edition, forecast, puzzles: makePuzzles(day, edition), birthdays: [] };
+const paper = assemble(edition, forecast, day, []);
 const costUsd = notes.usd + usd;
 mkdirSync("editions", { recursive: true });
 writeFileSync(`${file}.json`, JSON.stringify({ date, costUsd, paper }, null, 2));
@@ -55,5 +54,5 @@ if (overflowing.length) console.warn(`Warning: text is cut off on page ${overflo
 console.log(
   `Saved ${file}.pdf in ${Math.round((Date.now() - started) / 60000)} minutes. Cost: $${costUsd.toFixed(2)}${
     useClaudeCode ? " (estimate; your Claude subscription covers it)" : ""
-  } plus the illustration`,
+  } plus the pictures`,
 );
