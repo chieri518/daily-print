@@ -4,8 +4,8 @@
 
 Everything is built; these steps get it running. Do them in order.
 
-1. [ ] **Apply the database changes:** `npx supabase db push` (asks for the database password). Adds Google connections, scheduled editions, Stop and printer keys.
-2. [ ] **Add `CRON_SECRET` to `.env`:** any long random value, for example from `openssl rand -hex 32`.
+1. [x] **Apply the database changes:** `npx supabase db push` (asks for the database password). Adds Google connections, scheduled editions, Stop and printer keys.
+2. [x] **Add `CRON_SECRET` to `.env`:** any long random value, for example from `openssl rand -hex 32`.
 3. [ ] **Test on the Mac** (README: "Test automatic printing on your Mac"):
    - [ ] Set a print time about 25 minutes ahead; the Editions page shows it as Scheduled
    - [ ] It's written about 20 minutes before; Stop and Cancel work
@@ -19,10 +19,19 @@ Everything is built; these steps get it running. Do them in order.
 7. [ ] **Turn off new sign-ups** in Supabase (Authentication → Sign In / Providers), so strangers can't sign in
 8. [ ] Watch the first few mornings
 
+## Next: ready-made layouts
+
+Replaces free columns (see DECISIONS.md, Customize page).
+
+- [ ] Settings and print: 8 layouts on a 3-column grid; empty spots merge into a neighbour; word counts from each spot's size
+- [ ] Customize: side panel (section, empty spot, page), dragging that lights up where a section fits, choosing a layout when adding a page
+- [ ] New default pages
+- [ ] Make a real edition and check on paper: gaps, word counts, fillers, the vertical comic
+
 ## Soon: quality
 
 - [ ] Print an edition and check it on paper: is 7.5pt readable, do the puzzles and icons print cleanly?
-- [ ] Check each layout's word counts against real editions
+- [ ] Tune the estimates in `lib/space.ts` (words per square inch, puzzle heights) against real editions
 - [ ] Set up Google Calendar (README, Supabase step 6) and check birthday names print correctly
 - [ ] Add the pictures' cost to each edition's cost
 - [ ] Compare editions at different costs ($0.10, $0.50, $1) to see how quality changes

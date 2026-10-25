@@ -32,141 +32,82 @@ export const PAPER_SIZES = {
 // Wind speed follows the temperature: mph with Fahrenheit, km/h with Celsius.
 export const TEMPERATURES = { fahrenheit: "°F (Fahrenheit)", celsius: "°C (Celsius)" };
 
-export type Shape = "full" | "wide" | "tall" | "quarter" | "small" | "strip"; // small: shorter than a quarter page
+// A page is 1 to 3 columns of up to 3 sections, stacked top to bottom, with an optional band for wide items at the top or
+// bottom. The band covers every column, or all but the first or last (the "rail", which then runs the full height).
+// How much space each section gets is worked out in space.ts.
+export const LENGTHS = { short: "Short", medium: "Medium", long: "Long" }; // only stories have a length
 
-// Each page is a CSS grid of slots, filled in order (grid areas a, b, c, d). For each slot:
-// - shape: decides which sections fit (see `fits`)
-// - words, frontWords: about how many words fit on an inside page and on the front page (below the masthead, and around
-//   the illustration where it goes; see `illustratedSlot`), measured at 10pt with a 10% margin
-// - picture: on slots that can hold the front-page illustration, how many more words fit when there isn't one
-// - columns: how many text columns its stories use
-export const LAYOUTS = {
-  single: {
-    label: "One section",
-    grid: `"a" 1fr / 1fr`,
-    slots: [{ shape: "full", words: 690, frontWords: 290, picture: 260, columns: 3 }],
-  },
-  topTwo: {
-    label: "Top + two below",
-    grid: `"a a" 3fr "b c" 2fr / 1fr 1fr`,
-    slots: [
-      { shape: "wide", words: 280, frontWords: 220, columns: 3 },
-      { shape: "small", words: 120, frontWords: 90, columns: 2 },
-      { shape: "small", words: 120, frontWords: 90, columns: 2 },
-    ],
-  },
-  halves: {
-    label: "Two halves",
-    grid: `"a" 1fr "b" 1fr / 1fr`,
-    slots: [
-      { shape: "wide", words: 220, frontWords: 220, columns: 3 },
-      { shape: "wide", words: 220, frontWords: 220, columns: 3 },
-    ],
-  },
-  columns: {
-    label: "Two columns",
-    grid: `"a b" 1fr / 1fr 1fr`,
-    slots: [
-      { shape: "tall", words: 320, frontWords: 220, picture: 60, columns: 2 },
-      { shape: "tall", words: 320, frontWords: 250, picture: 60, columns: 2 },
-    ],
-  },
-  quarters: {
-    label: "Four quarters",
-    grid: `"a b" 1fr "c d" 1fr / 1fr 1fr`,
-    slots: [
-      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
-      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
-      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
-      { shape: "quarter", words: 150, frontWords: 120, columns: 2 },
-    ],
-  },
-  stripMain: {
-    label: "Strip + main",
-    grid: `"a" auto "b" 1fr / 1fr`,
-    slots: [
-      { shape: "strip", words: 0, frontWords: 0, columns: 3 },
-      { shape: "full", words: 370, frontWords: 210, picture: 140, columns: 3 }, // sized for the taller comic strip
-    ],
-  },
-} satisfies Record<
-  string,
-  {
-    label: string;
-    grid: string;
-    slots: { shape: Shape; words: number; frontWords: number; picture?: number; columns: number }[];
-  }
->;
-
-// Grid area name of a slot.
-export const area = (slot: number) => "abcd"[slot];
-
-// Slots with at least this many words hold a main story and shorter ones. Smaller slots hold one story.
+// Sections with room for at least this many words hold a main story and shorter ones. Smaller ones hold one story.
 export const MAIN_STORY_WORDS = 250;
 
-// The front-page slot that gets the illustration: the first slot of stories that is full or tall, so the 3:1 picture
-// leaves room for text. -1 if there is none, and then no illustration is made.
-export function illustratedSlot(frontPage: Page) {
-  return frontPage.slots.findIndex(
-    (s, j) => !s.kind && ["full", "tall"].includes(LAYOUTS[frontPage.layout].slots[j].shape),
-  );
-}
+// Whether the front page's band holds stories. The illustration goes there; without one, no illustration is made.
+export const illustrated = (settings: Settings) => !!settings.pages[0].band && !settings.pages[0].band.item.section.kind;
 
-export const hasSection = (settings: Settings, kind: Feature) =>
-  settings.pages.some((p) => p.slots.some((s) => s.kind === kind));
+// Every section on a page, in order: the band first, then each column top to bottom.
+export const pageItems = (page: Draft) => [...(page.band?.item ? [page.band.item] : []), ...page.stacks.flat()];
 
-export function slotWords(page: number, layout: keyof typeof LAYOUTS, slot: number) {
-  const s = LAYOUTS[layout].slots[slot];
-  return page === 0 ? s.frontWords : s.words;
-}
+// The comic is a strip in a wide space (wider than this, in inches), or four panels stacked in a column.
+export const STRIP_WIDTH = 4;
 
-// Sections that aren't stories. Each has a fixed design, so it needs a slot of the right shape.
-// Puzzles stay inside the paper; the weather, comic and word of the day can go on the front page.
+// Sections that aren't stories. Each has a fixed design, so it needs a minimum width, and takes about `height` inches
+// at a given width (in inches, used to size the stories around it). Puzzles stay inside the paper; the weather, comic
+// and word of the day can go on the front page.
 export const FEATURES = {
   weather: {
     title: "Weather",
     about: "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
-    shapes: ["strip", "wide", "full"],
+    minWidth: 3.5,
+    height: () => 1.9,
     frontPage: true,
   },
   crossword: {
     title: "Mini Crossword",
     about: "a small crossword with clues from today's stories",
-    shapes: ["wide", "tall", "full"],
+    minWidth: 2.2,
+    height: (w: number) => (w > STRIP_WIDTH ? 3.4 : 4.9), // the clues go beside the grid, or below it
     frontPage: false,
   },
-  sudoku: { title: "Sudoku", about: "a sudoku puzzle", shapes: ["quarter", "wide", "tall", "full"], frontPage: false },
+  sudoku: { title: "Sudoku", about: "a sudoku puzzle", minWidth: 2.2, height: () => 4, frontPage: false },
   wordSearch: {
     title: "Word Search",
     about: "words from today's stories hidden in a grid",
-    shapes: ["quarter", "small", "wide", "tall", "full"],
+    minWidth: 2.2,
+    height: () => 3,
     frontPage: false,
   },
   trivia: {
     title: "News Quiz",
     about: "five questions about today's stories",
-    shapes: ["quarter", "small", "wide", "tall", "full"],
+    minWidth: 1.5,
+    height: (w: number) => (w < 3 ? 3.4 : 2.6),
     frontPage: false,
   },
   jumble: {
     title: "Jumble",
     about: "four scrambled words from today's stories",
-    shapes: ["quarter", "small", "wide", "tall", "full"],
+    minWidth: 1.6,
+    height: (w: number) => (w < 3 ? 3.3 : 2.4),
     frontPage: false,
   },
   comic: {
     title: "Comic Strip",
     about: "a cute four-panel comic about the day's news, starring your cast",
-    shapes: ["strip"],
+    minWidth: 1.5,
+    height: (w: number) => 0.35 + (w > STRIP_WIDTH ? w / 3 : w * 2), // a 3:1 strip, or panels stacked 1:2
     frontPage: true,
   },
   wordOfTheDay: {
     title: "Word of the Day",
     about: "an interesting word, what it means and how to use it",
-    shapes: ["strip", "quarter", "small", "wide", "tall", "full"],
+    minWidth: 1.5,
+    height: (w: number) => (w < 3 ? 1.6 : 1.2),
     frontPage: true,
   },
-} satisfies Record<string, { title: string; about: string; shapes: Shape[]; frontPage: boolean }>;
+} satisfies Record<
+  string,
+  { title: string; about: string; minWidth: number; height: (width: number) => number; frontPage: boolean }
+>;
+
 
 export const DEFAULT_CAST = "a skeptical gray cat and an over-excited pigeon";
 
@@ -192,9 +133,18 @@ export const Section = z.object({
   kind: choice(FEATURES).optional(), // empty for a section of stories
 });
 
+export const MAX_COLUMNS = 3;
+export const MAX_STACK = 3; // sections in one column
+
+const Item = z.object({ section: Section, length: choice(LENGTHS).default("medium") });
+
 export const Page = z
-  .object({ layout: choice(LAYOUTS), slots: z.array(Section) })
-  .refine((p) => p.slots.length === LAYOUTS[p.layout].slots.length, "Every slot needs a section");
+  .object({
+    columns: z.number().int().min(1).max(MAX_COLUMNS),
+    band: z.object({ item: Item, at: z.enum(["top", "bottom"]), rail: z.enum(["none", "left", "right"]) }).nullable(),
+    stacks: z.array(z.array(Item).min(1, "Every column needs a section").max(MAX_STACK)),
+  })
+  .refine((p) => p.stacks.length === p.columns, "Every column needs a section");
 
 export const MAX_PAGES = 8;
 
@@ -219,10 +169,13 @@ export const Settings = z.object({
   brief: text(2000),
 });
 
-// A reader's saved settings, or the defaults from paper.json if they have none (or saved an older format).
+// A reader's saved settings, or the defaults from paper.json if they have none. Pages saved in an older format are
+// replaced with the default pages, keeping the rest.
 export function settingsOrDefaults(saved: unknown): Settings {
   const parsed = Settings.safeParse(saved);
-  return parsed.success ? parsed.data : Settings.parse(defaults);
+  if (parsed.success) return parsed.data;
+  const withDefaultPages = Settings.safeParse({ ...(saved as object), pages: defaults.pages });
+  return withDefaultPages.success ? withDefaultPages.data : Settings.parse(defaults);
 }
 
 // A reader's saved settings, read with a Supabase client that's allowed to see them.
@@ -234,7 +187,12 @@ export async function settingsFor(db: SupabaseClient, userId: string) {
 
 export type Section = z.infer<typeof Section>;
 export type Feature = keyof typeof FEATURES;
+export type Item = z.infer<typeof Item>;
 export type Page = z.infer<typeof Page>;
+// A page while it's being edited in Customize: a column can be empty, and the band can have no section yet.
+export type Draft = Omit<Page, "band"> & {
+  band: (Omit<NonNullable<Page["band"]>, "item"> & { item: Item | null }) | null;
+};
 export type Settings = z.infer<typeof Settings>;
 
 // Ready-made sections. Readers can also make their own.
@@ -252,9 +210,9 @@ export const PRESET_SECTIONS: Section[] = [
   ...Object.entries(FEATURES).map(([kind, f]) => ({ title: f.title, about: f.about, kind: kind as Feature })),
 ];
 
-// Whether a section can go in a slot of this shape on this page. Stories fit any slot but a strip.
-export function fits(section: Section, page: number, shape: Shape) {
-  if (!section.kind) return shape !== "strip";
+// Whether a section can go in a space this many inches wide on this page. Stories fit anywhere.
+export function fits(section: Section, page: number, width: number) {
+  if (!section.kind) return true;
   const feature = FEATURES[section.kind];
-  return (feature.shapes as Shape[]).includes(shape) && (page > 0 || feature.frontPage);
+  return width >= feature.minWidth && (page > 0 || feature.frontPage);
 }

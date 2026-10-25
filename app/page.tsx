@@ -9,10 +9,11 @@ export default async function Home() {
   const reader = await getReader();
   if (!reader) return <Landing />;
 
-  const { data: editions } = await reader.supabase
+  const { data: editions, error } = await reader.supabase
     .from("editions")
     .select("id, day, status, print_at, printed_at, print_error")
     .order("created_at", { ascending: false });
+  if (error) throw error;
   const { timeZone } = await loadSettings(reader);
   const time = (at: string) => new Date(at).toLocaleTimeString("en-US", { timeZone, timeStyle: "short" });
   const stop = (id: string, label: string) => (

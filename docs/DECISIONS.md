@@ -20,7 +20,7 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | News is **summarized with sources**. Pieces the editor writes itself (editorial, analysis) say so in their label | |
 | **Research:** one Claude call per section, all at once, with up to 6 web searches each | One long call took 3 minutes; this takes about 80 seconds |
 | **Writing:** two calls at once: the stories (Claude Opus) and the extras (Claude Sonnet, faster): weather tip, puzzle words, quiz, word of the day, comic | About 80 seconds instead of 2 minutes. The extras come from the research notes |
-| Each slot has a **word limit**, measured from the print layout (90% of what fits). A big slot holds a main story and at most two shorter ones. Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off |
+| Each story's **word limit** comes from the size of its spot in the layout (estimated in `lib/space.ts`). Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off. Fixed boxes with fixed word counts left gaps whenever a story came in short |
 | Tone (straight news, conversational, witty, **Gen Z**) and reading level are settings. Readers can add a **brief to the editor**, sources to trust or avoid, and preferred sources per section | Sources are instructions to Claude, not enforced |
 | Claude calls retry at most once | They cost money |
 | Locally, `USE_CLAUDE_CODE=1` runs Claude through Claude Code on the owner's subscription. Deployed, always the API key | A subscription login isn't allowed in a deployed or multi-user app |
@@ -31,8 +31,8 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 |---|---|
 | **AI-drawn**, never photos taken from news sites | News photos are copyrighted. Openly licensed photos (Wikimedia Commons) remain an option |
 | OpenAI (`gpt-image-2`) or Google, whichever has a key. Without a key, the paper prints a placeholder box | OpenAI is tested; Google isn't |
-| **Illustration:** pen and ink, 3:1, on the front page only, in a full or tall slot. The editor picks a **light or neutral** story for it, never violence, death, war, disasters, crime or grief, and skips it on a heavy news day | It used to illustrate the first story, whatever it was. In shorter slots a 3:1 picture left no room for text |
-| **Comic strip:** four cute black-and-white panels with speech bubbles, starring a cast the reader describes (default: a skeptical gray cat and an over-excited pigeon). A gentle, non-partisan joke about a light story. It fits only a strip slot | The same cast description keeps the characters alike. No real people |
+| **Illustration:** pen and ink, 3:1, on the front page only, in the first story spot at least two columns wide. The editor picks a **light or neutral** story for it, never violence, death, war, disasters, crime or grief, and skips it on a heavy news day | It used to illustrate the first story, whatever it was. In a narrow column a 3:1 picture is too small |
+| **Comic strip:** four cute black-and-white panels with speech bubbles, starring a cast the reader describes (default: a skeptical gray cat and an over-excited pigeon). A gentle, non-partisan joke about a light story. **Vertical** (four panels stacked) in a one-column spot, or a **strip** in a wide one; the paper picks whichever fits | The same cast description keeps the characters alike. No real people. Strip-only left a lot of empty space under it |
 
 ## The paper's sections
 
@@ -43,13 +43,18 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | **Puzzles:** Sudoku, Mini Crossword, Word Search, Jumble, News Quiz. Code makes the grids, so they're always valid; Claude picks the words and clues. Each prints yesterday's answers below it | Puzzles are saved with each edition, for the next day's answers |
 | **Word of the Day**, and **Birthdays today** from Google Calendar: a slim line under the masthead, only on days with birthdays | Birthday names never go to Claude |
 | Puzzles stay inside the paper; the weather, comic and word of the day can go on the front page | |
+| **Fillers** fill space left at the bottom of a section: quote of the day, fun fact, on this day (one line). They're written with the extras and only printed where they fit | Real papers fill leftover space with small items instead of leaving it blank |
 
 ## Customize page
 
 | Decision | Why |
 |---|---|
-| Pages are small previews. Sections are **dragged into slots**, or chosen by clicking a slot (works on phones and with a keyboard) | Like a website builder, but simpler. Built on common drag-and-drop guidance |
-| Six layouts: One section, Top + two below, Two halves, Two columns, Four quarters, Strip + main. Each slot has a shape, and a section only goes where it fits; the builder says "Doesn't fit" | The owner chose this over a free-form grid, which is much harder to keep printable |
+| Each page uses one of **8 ready-made layouts** on a 3-column grid: Lead + 3 columns, Lead + rail, Three columns, Lead + two halves, Columns + strip, Six small boxes, Feature + rail + strip, Two columns stacked. The layout is chosen when adding a page, and can be changed later | Free columns with Short / Medium / Long hid their rules: a column could look full but still offer +, and sizes changed behind the reader's back. Ready-made layouts always look designed |
+| Each spot in a layout has a **fixed size**, shown as about how many words fit. A longer story means a bigger spot | Simpler than lengths, and the word count matches the box exactly |
+| A spot can be **left empty**: the section next to it grows into the space | Never blocks saving, and never prints a gap |
+| A **side panel** shows the settings of whatever is selected: a section (words, what it covers, sources, Remove), an empty spot (what fits there) or a page (layout, move, remove). No pop-ups | Settings were scattered across pop-ups and controls under the page |
+| While a section is dragged, the spots it fits **light up** and the others dim. The weather, puzzles and comic need spots of a minimum size | Readers couldn't tell what goes where |
+| Switching to the new pages **starts everyone on new default pages**; other settings are kept | Only the owner and a few testers use it |
 | Three tabs (Pages, Paper & style, Writing & sources), Undo, and a save bar that always says what's going on | |
 | Typeface chosen from three cards showing the paper in that typeface | |
 | No browser pop-ups | The owner's browser blocks them |

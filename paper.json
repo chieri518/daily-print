@@ -9,38 +9,161 @@
   "location": "San Francisco Bay Area",
   "pages": [
     {
-      "layout": "stripMain",
-      "slots": [
-        { "title": "Weather", "about": "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket", "kind": "weather" },
-        { "title": "Top Stories", "about": "the most important stories of the day, from any topic" }
+      "columns": 3,
+      "band": {
+        "item": {
+          "section": {
+            "title": "Top Stories",
+            "about": "the most important stories of the day, from any topic"
+          },
+          "length": "long"
+        },
+        "at": "top",
+        "rail": "none"
+      },
+      "stacks": [
+        [
+          {
+            "section": {
+              "title": "Bay Area",
+              "about": "local news from San Francisco, Oakland, San Jose and the Peninsula"
+            },
+            "length": "medium"
+          }
+        ],
+        [
+          {
+            "section": {
+              "title": "Tech",
+              "about": "startups, venture funding, AI and big tech"
+            },
+            "length": "medium"
+          }
+        ],
+        [
+          {
+            "section": {
+              "title": "Comic Strip",
+              "about": "a cute four-panel comic about the day's news, starring your cast",
+              "kind": "comic"
+            },
+            "length": "medium"
+          },
+          {
+            "section": {
+              "title": "Word of the Day",
+              "about": "an interesting word, what it means and how to use it",
+              "kind": "wordOfTheDay"
+            },
+            "length": "medium"
+          }
+        ]
       ]
     },
     {
-      "layout": "topTwo",
-      "slots": [
-        { "title": "Tech", "about": "startups, venture funding, AI and big tech" },
-        { "title": "Opinion", "about": "an editorial written by the editor about a story in this edition" },
-        { "title": "Business", "about": "markets, companies and the economy" }
+      "columns": 2,
+      "band": {
+        "item": {
+          "section": {
+            "title": "Weather",
+            "about": "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
+            "kind": "weather"
+          },
+          "length": "medium"
+        },
+        "at": "top",
+        "rail": "none"
+      },
+      "stacks": [
+        [
+          {
+            "section": {
+              "title": "Business",
+              "about": "markets, companies and the economy"
+            },
+            "length": "long"
+          }
+        ],
+        [
+          {
+            "section": {
+              "title": "Opinion",
+              "about": "an editorial written by the editor about a story in this edition"
+            },
+            "length": "medium"
+          }
+        ]
       ]
     },
     {
-      "layout": "columns",
-      "slots": [
-        { "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" },
-        { "title": "Mini Crossword", "about": "a small crossword with clues from today's stories", "kind": "crossword" }
-      ]
-    },
-    {
-      "layout": "quarters",
-      "slots": [
-        { "title": "Sudoku", "about": "a sudoku puzzle", "kind": "sudoku" },
-        { "title": "Word Search", "about": "words from today's stories hidden in a grid", "kind": "wordSearch" },
-        { "title": "News Quiz", "about": "five questions about today's stories", "kind": "trivia" },
-        { "title": "On This Day", "about": "a short history piece about something that happened on this date" }
+      "columns": 3,
+      "band": {
+        "item": {
+          "section": {
+            "title": "Mini Crossword",
+            "about": "a small crossword with clues from today's stories",
+            "kind": "crossword"
+          },
+          "length": "medium"
+        },
+        "at": "bottom",
+        "rail": "none"
+      },
+      "stacks": [
+        [
+          {
+            "section": {
+              "title": "Sudoku",
+              "about": "a sudoku puzzle",
+              "kind": "sudoku"
+            },
+            "length": "medium"
+          },
+          {
+            "section": {
+              "title": "Jumble",
+              "about": "four scrambled words from today's stories",
+              "kind": "jumble"
+            },
+            "length": "medium"
+          }
+        ],
+        [
+          {
+            "section": {
+              "title": "Word Search",
+              "about": "words from today's stories hidden in a grid",
+              "kind": "wordSearch"
+            },
+            "length": "medium"
+          },
+          {
+            "section": {
+              "title": "News Quiz",
+              "about": "five questions about today's stories",
+              "kind": "trivia"
+            },
+            "length": "medium"
+          }
+        ],
+        [
+          {
+            "section": {
+              "title": "On This Day",
+              "about": "a short history piece about something that happened on this date"
+            },
+            "length": "long"
+          }
+        ]
       ]
     }
   ],
-  "customSections": [{ "title": "Bay Area", "about": "local news from San Francisco, Oakland, San Jose and the Peninsula" }],
+  "customSections": [
+    {
+      "title": "Bay Area",
+      "about": "local news from San Francisco, Oakland, San Jose and the Peninsula"
+    }
+  ],
   "tone": "straight",
   "readingLevel": "general",
   "trustedSources": [],

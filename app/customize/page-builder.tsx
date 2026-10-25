@@ -1,32 +1,54 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, FeaturePreview, LayoutIcon } from "./parts";
+import { Dialog, FeaturePreview } from "./parts";
 import defaults from "@/paper.json";
 import {
-  area,
   fits,
-  LAYOUTS,
+  LENGTHS,
+  MAX_COLUMNS,
   MAX_PAGES,
+  MAX_STACK,
+  pageItems,
   PAPER_SIZES,
   PRESET_SECTIONS,
   Settings,
-  slotWords,
   TYPEFACES,
+  type Draft,
+  type Item,
   type Page,
   type Section,
 } from "@/lib/settings";
+import { columnHeight, gridPlaces, measure, widths, words } from "@/lib/space";
 
 // The pages every new reader starts with.
 const DEFAULT_PAGES = Settings.parse(defaults).pages;
 
-// While editing, a slot can be empty. Every slot must be filled before saving.
-export type Draft = { layout: Page["layout"]; slots: (Section | null)[] };
-type Spot = { page: number; slot: number };
+// Below this, a story is little more than a headline: the preview warns about it.
+const MIN_WORDS = 60;
 
-const same = (a?: Spot | null, b?: Spot | null) => !!a && !!b && a.page === b.page && a.slot === b.slot;
+// A place for a section: a position in a column (index = the column's length adds it at the end), or the band
+// (column -1).
+type Spot = { page: number; column: number; index: number };
 
-// The pages as small previews. Sections go into slots by dragging them, or by clicking a slot and choosing one.
+const same = (a?: Spot | null, b?: Spot | null) =>
+  !!a && !!b && a.page === b.page && a.column === b.column && a.index === b.index;
+
+type Rail = NonNullable<Page["band"]>["rail"];
+
+// Takes the section at a spot out of the pages. `pages` is a copy being changed.
+function take(pages: Draft[], { page, column, index }: Spot) {
+  if (column >= 0) pages[page].stacks[column].splice(index, 1);
+  else pages[page].band!.item = null;
+}
+
+function put(pages: Draft[], { page, column, index }: Spot, item: Item) {
+  if (column >= 0) pages[page].stacks[column].splice(index, 0, item);
+  else pages[page].band!.item = item;
+}
+
+// The pages as small previews: columns of sections, and maybe a band. Sections go in by dragging them, or by clicking
+// "+" and choosing one. Clicking a section sets its length, moves it or removes it.
 export function PageBuilder({
   settings,
   set,
@@ -39,10 +61,10 @@ export function PageBuilder({
   setPages: (pages: Draft[]) => void;
 }) {
   const [history, setHistory] = useState<Draft[][]>([]);
-  const [dragged, setDragged] = useState<{ section: Section; from?: Spot } | null>(null);
+  const [dragged, setDragged] = useState<{ item: Item; from?: Spot } | null>(null);
   const [over, setOver] = useState<Spot | "list" | null>(null);
-  const [picking, setPicking] = useState<Spot | null>(null);
-  const [layoutFor, setLayoutFor] = useState<number | null>(null); // the page whose layout is being chosen
+  const [adding, setAdding] = useState<Spot | null>(null); // where a section chosen from the list goes
+  const [editing, setEditing] = useState<Spot | null>(null); // the placed section whose options are open
   // The section being added or edited. `original` is its name before editing; empty for a new section.
   const [form, setForm] = useState<{ original: string; title: string; about: string; sources: string } | null>(null);
   const [nameTaken, setNameTaken] = useState(false);
@@ -52,7 +74,7 @@ export function PageBuilder({
     ...PRESET_SECTIONS.map((p) => settings.customSections.find((c) => c.title === p.title) ?? p),
     ...settings.customSections.filter((c) => !isPreset(c.title)),
   ];
-  const placed = new Set(pages.flatMap((p) => p.slots.map((s) => s?.title)));
+  const placed = new Set(pages.flatMap((p) => pageItems(p).map((item) => item.section.title)));
   const available = sections.filter((s) => !placed.has(s.title));
   const groups = [
     { name: "News", sections: available.filter((s) => !s.kind && isPreset(s.title)) },
@@ -60,53 +82,109 @@ export function PageBuilder({
     { name: "Your sections", sections: available.filter((s) => !isPreset(s.title)) },
   ];
 
-  // Every change to the pages can be undone.
+  // Every change to the pages can be undone. `edit` changes a copy of the pages.
   const change = (next: Draft[]) => {
     setHistory([...history, pages]);
     setPages(next);
+  };
+  const edit = (update: (next: Draft[]) => void) => {
+    const next = structuredClone(pages);
+    update(next);
+    change(next);
   };
   const undo = () => {
     setPages(history.at(-1)!);
     setHistory(history.slice(0, -1));
   };
 
-  const withSlot = (pages: Draft[], { page, slot }: Spot, section: Section | null) =>
-    pages.map((p, i) => (i === page ? { ...p, slots: p.slots.map((s, j) => (j === slot ? section : s)) } : p));
+  // Puzzles and the weather need a minimum width (see `fits`).
+  const fitsAt = (section: Section, spot: Spot, inPages = pages) => {
+    const width = widths(inPages[spot.page], settings.paperSize);
+    return fits(section, spot.page, spot.column < 0 ? width.band : width.column);
+  };
+  // A section can go to a spot if it fits there, and the column has room (or it's moving within that column).
+  const room = (to: Spot, from?: Spot) =>
+    to.column < 0 ||
+    pages[to.page].stacks[to.column].length < MAX_STACK ||
+    (from?.page === to.page && from.column === to.column);
+  const canPut = (section: Section, to: Spot, from?: Spot) => fitsAt(section, to) && room(to, from);
 
-  // Puts a section in a slot. If it came from another slot, the two swap.
-  const place = (to: Spot, section: Section | null, from?: Spot) => {
-    let next = withSlot(pages, to, section);
-    if (from) next = withSlot(next, from, pages[to.page].slots[to.slot]);
-    change(next);
+  // After the columns or band change, sections that no longer fit go back to the list.
+  const prune = (page: Draft, i: number, inPages: Draft[]) => {
+    page.stacks = page.stacks.map((stack, k) =>
+      stack.filter((item, n) => fitsAt(item.section, { page: i, column: k, index: n }, inPages)),
+    );
+    if (page.band?.item && !fitsAt(page.band.item.section, { page: i, column: -1, index: 0 }, inPages))
+      page.band.item = null;
   };
 
-  // What dropping the dragged section here would do, shown on the slot while dragging over it.
+  // Moves a section to a spot (from another spot, or from the list). The band holds one section: the one already
+  // there goes back to where the new one came from, if it fits, or to the list.
+  const move = (to: Spot, item: Item, from?: Spot) =>
+    edit((next) => {
+      const replaced = to.column < 0 ? next[to.page].band!.item : null;
+      if (from) take(next, from);
+      const shifted = from && from.page === to.page && from.column === to.column && from.index < to.index;
+      put(next, shifted ? { ...to, index: to.index - 1 } : to, item);
+      if (replaced && from && fitsAt(replaced.section, from)) put(next, from, replaced);
+    });
+
+  // What dropping the dragged section here would do, shown while dragging over it.
   const dropLabel = (spot: Spot) => {
     if (!dragged || same(dragged.from, spot)) return null;
-    if (!canDrop(spot, dragged.section, dragged.from)) return "Doesn't fit";
-    if (!pages[spot.page].slots[spot.slot]) return "Place";
-    return dragged.from ? "Swap" : "Replace";
+    if (!fitsAt(dragged.item.section, spot)) return "Doesn't fit";
+    if (!room(spot, dragged.from)) return "Column is full";
+    if (spot.column < 0) return pages[spot.page].band!.item ? (dragged.from ? "Swap" : "Replace") : "Place";
+    return "Put here";
   };
-
-  // Puzzles and the weather need slots of certain shapes (see `fits`).
-  const fitsAt = (section: Section | null, { page, slot }: Spot) =>
-    !section || fits(section, page, LAYOUTS[pages[page].layout].slots[slot].shape);
-  // A section can go here if it fits, and when swapping, if the section already here fits where it came from.
-  const canDrop = (spot: Spot, section: Section, from?: Spot) =>
-    fitsAt(section, spot) && (!from || fitsAt(pages[spot.page].slots[spot.slot], from));
-
+  const drop = (spot: Spot) => {
+    if (dragged && !same(dragged.from, spot) && canPut(dragged.item.section, spot, dragged.from))
+      move(spot, dragged.item, dragged.from);
+    endDrag();
+  };
   const endDrag = () => {
     setDragged(null);
     setOver(null);
   };
+  // Drag-and-drop handlers for a drop spot.
+  const dropTarget = (spot: Spot) => ({
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      setOver(spot);
+    },
+    onDragLeave: () => setOver(null),
+    onDrop: () => drop(spot),
+  });
+  const labelAt = (spot: Spot) => (same(over as Spot, spot) ? dropLabel(spot) : null);
+  const dropClass = (label: string | null) =>
+    !label ? "" : label === "Doesn't fit" || label === "Column is full" ? " blocked" : " over";
 
-  const setLayout = (page: number, layout: Page["layout"]) => {
-    const slots = LAYOUTS[layout].slots.map((slot, j) => {
-      const section = pages[page].slots[j];
-      return section && fits(section, page, slot.shape) ? section : null;
+  // Adds an empty column on the right; columns get narrower, so puzzles that no longer fit go back to the list.
+  const addColumn = (i: number) =>
+    edit((next) => {
+      next[i].stacks.push([]);
+      next[i].columns++;
+      prune(next[i], i, next);
     });
-    change(pages.map((p, i) => (i === page ? { layout, slots } : p)));
-  };
+  // Removes an empty column. With one column left, the band covers it.
+  const removeColumn = (i: number, k: number) =>
+    edit((next) => {
+      const page = next[i];
+      page.stacks.splice(k, 1);
+      page.columns--;
+      if (page.columns === 1 && page.band) page.band.rail = "none";
+    });
+  const setBand = (i: number, at: "none" | "top" | "bottom") =>
+    edit((next) => {
+      const page = next[i];
+      page.band = at === "none" ? null : { item: null, rail: "none", ...page.band, at };
+      prune(page, i, next);
+    });
+  const setRail = (i: number, rail: Rail) =>
+    edit((next) => {
+      next[i].band!.rail = rail;
+      prune(next[i], i, next);
+    });
 
   // Swaps a page with the one next to it. The front page stays first.
   const movePage = (page: number, by: -1 | 1) => {
@@ -125,7 +203,7 @@ export function PageBuilder({
     setNameTaken(false);
   };
 
-  // Saves a new or edited section, and updates it in every slot where it's placed.
+  // Saves a new or edited section, and updates it wherever it's placed.
   // Only a name is needed: without a description, the editor covers the news about that name.
   const saveSection = () => {
     const { original } = form!;
@@ -149,13 +227,74 @@ export function PageBuilder({
         : [...settings.customSections, section],
     });
     if (original)
-      change(pages.map((p) => ({ ...p, slots: p.slots.map((s) => (s?.title === original ? section : s)) })));
+      edit((next) =>
+        next.forEach((p) =>
+          pageItems(p).forEach((item) => item.section.title === original && (item.section = section)),
+        ),
+      );
     setForm(null);
   };
 
   const fonts = TYPEFACES[settings.typeface];
   const size = PAPER_SIZES[settings.paperSize];
   const removing = over === "list" && dragged?.from;
+  const editingItem = editing && itemAt(pages, editing);
+
+  // A placed section in a preview, sized like it prints.
+  const block = (item: Item, spot: Spot, height: number, inches: { width: number; height: number }) => {
+    const label = labelAt(spot);
+    return (
+      <div
+        key={`${spot.column}-${spot.index}`}
+        role="button"
+        tabIndex={0}
+        aria-label={`Page ${spot.page + 1}: ${item.section.title}. Options.`}
+        className={`sheet-item${dropClass(label)}${same(dragged?.from, spot) ? " lifted" : ""}`}
+        style={{ flex: `${height} 1 0` }}
+        draggable
+        onDragStart={() => setDragged({ item, from: spot })}
+        onDragEnd={endDrag}
+        {...dropTarget(spot)}
+        onClick={() => setEditing(spot)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setEditing(spot);
+          }
+        }}
+      >
+        {label && <span className="drop-label">{label}</span>}
+        <span className="sheet-section">{item.section.title}</span>
+        {item.section.kind ? (
+          <FeaturePreview kind={item.section.kind} />
+        ) : (
+          <>
+            <span className="sheet-size">
+              {LENGTHS[item.length]} · ~{words(inches)} words
+            </span>
+            {words(inches) < MIN_WORDS && <span className="sheet-warning">Too small to read well</span>}
+            <span className="sheet-lines" />
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // An empty place to add a section: the band, or the end of a column.
+  const addButton = (spot: Spot, text: string, grow: boolean) => {
+    const label = labelAt(spot);
+    return (
+      <button
+        type="button"
+        className={`sheet-add${grow ? " grow" : ""}${dropClass(label)}`}
+        aria-label={`Page ${spot.page + 1}: ${text}`}
+        onClick={() => setAdding(spot)}
+        {...dropTarget(spot)}
+      >
+        {label ? <span className="drop-label">{label}</span> : text}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -170,7 +309,10 @@ export function PageBuilder({
           ↶ Undo
         </button>
       </div>
-      <p className="muted">Drag sections onto the pages, or click a slot to choose one.</p>
+      <p className="muted">
+        Drag sections into the columns, or click + to add a section or a column (up to {MAX_COLUMNS} columns, with up to{" "}
+        {MAX_STACK} sections each). Click a section to set its length or move it.
+      </p>
 
       <div className={`workspace${dragged ? " dragging" : ""}`}>
         <aside
@@ -181,7 +323,8 @@ export function PageBuilder({
           }}
           onDragLeave={() => setOver(null)}
           onDrop={() => {
-            if (dragged?.from) change(withSlot(pages, dragged.from, null));
+            const from = dragged?.from;
+            if (from) edit((next) => take(next, from));
             endDrag();
           }}
         >
@@ -194,10 +337,10 @@ export function PageBuilder({
                 {group.sections.map((s) => (
                   <div
                     key={s.title}
-                    className={`chip${dragged?.section === s ? " lifted" : ""}`}
+                    className={`chip${dragged?.item.section === s ? " lifted" : ""}`}
                     title={s.about}
                     draggable
-                    onDragStart={() => setDragged({ section: s })}
+                    onDragStart={() => setDragged({ item: { section: s, length: "medium" } })}
                     onDragEnd={endDrag}
                   >
                     <span>
@@ -240,115 +383,138 @@ export function PageBuilder({
         </aside>
 
         <div className="sheets">
-          {pages.map((page, i) => (
-            <div key={i} className="sheet-wrap">
-              <div
-                className="sheet"
-                style={{
-                  aspectRatio: `${parseFloat(size.width)} / ${parseFloat(size.height)}`,
-                  fontFamily: fonts.body,
-                }}
-              >
-                {i === 0 && (
-                  <div className="sheet-masthead" style={{ fontFamily: fonts.masthead }}>
-                    {settings.name}
-                  </div>
-                )}
-                <div className="sheet-slots" style={{ gridTemplate: LAYOUTS[page.layout].grid }}>
-                  {page.slots.map((section, j) => {
-                    const spot = { page: i, slot: j };
-                    const label = same(over as Spot, spot) ? dropLabel(spot) : null;
-                    return (
+          {pages.map((page, i) => {
+            const space = measure(page, i === 0, settings.paperSize);
+            const places = gridPlaces(page);
+            const bandSpot = { page: i, column: -1, index: 0 };
+            // The preview's grid matches the printed page (see layout.ts).
+            const bandHeight = page.band ? space[0].height : 0;
+            const restHeight = columnHeight(i === 0, settings.paperSize) - bandHeight;
+            const rows = !page.band
+              ? "1fr"
+              : page.band.at === "top"
+              ? `${bandHeight}fr ${restHeight}fr`
+              : `${restHeight}fr ${bandHeight}fr`;
+            let j = page.band ? 1 : 0;
+            return (
+              <div key={i} className="sheet-wrap">
+                <div
+                  className="sheet"
+                  style={{
+                    aspectRatio: `${parseFloat(size.width)} / ${parseFloat(size.height)}`,
+                    fontFamily: fonts.body,
+                  }}
+                >
+                  {i === 0 && (
+                    <div className="sheet-masthead" style={{ fontFamily: fonts.masthead }}>
+                      {settings.name}
+                    </div>
+                  )}
+                  <div
+                    className="sheet-columns"
+                    style={{
+                      gridTemplate: `${rows} / repeat(${page.columns}, 1fr)${
+                        page.columns < MAX_COLUMNS ? " auto" : ""
+                      }`,
+                    }}
+                  >
+                    {page.band && (
+                      <div className="sheet-stack" style={{ gridColumn: places.band.column, gridRow: places.band.row }}>
+                        {page.band.item
+                          ? block(page.band.item, bandSpot, 1, space[0])
+                          : addButton(bandSpot, "+ Band section", true)}
+                      </div>
+                    )}
+                    {page.stacks.map((stack, k) => (
                       <div
-                        key={j}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Page ${i + 1}, slot ${j + 1}: ${section?.title ?? "empty"}. Choose a section.`}
-                        className={`sheet-slot${section ? "" : " empty"}${
-                          label ? (label === "Doesn't fit" ? " blocked" : " over") : ""
-                        }${same(dragged?.from, spot) ? " lifted" : ""}`}
-                        style={{ gridArea: area(j) }}
-                        draggable={!!section}
-                        onDragStart={() => section && setDragged({ section, from: spot })}
-                        onDragEnd={endDrag}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setOver(spot);
-                        }}
-                        onDragLeave={() => setOver(null)}
-                        onDrop={() => {
-                          if (dragged && !same(dragged.from, spot) && canDrop(spot, dragged.section, dragged.from)) {
-                            place(spot, dragged.section, dragged.from);
-                          }
-                          endDrag();
-                        }}
-                        onClick={() => setPicking(spot)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setPicking(spot);
-                          }
-                        }}
+                        key={k}
+                        className="sheet-stack"
+                        style={{ gridColumn: places.column(k).column, gridRow: places.column(k).row }}
                       >
-                        {label && <span className="drop-label">{label}</span>}
-                        {section ? (
-                          <>
-                            <span className="sheet-section">{section.title}</span>
-                            {section.kind ? (
-                              <FeaturePreview kind={section.kind} />
-                            ) : (
-                              <>
-                                <span className="sheet-size">~{slotWords(i, page.layout, j)} words</span>
-                                <span className="sheet-lines" />
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <span>+ Add section</span>
+                        {stack.map((item, n) => {
+                          const inches = space[j++];
+                          return block(item, { page: i, column: k, index: n }, inches.height, inches);
+                        })}
+                        {stack.length < MAX_STACK &&
+                          addButton(
+                            { page: i, column: k, index: stack.length },
+                            stack.length ? "+" : "+ Add section",
+                            !stack.length,
+                          )}
+                        {!stack.length && page.columns > 1 && (
+                          <button type="button" className="sheet-add" onClick={() => removeColumn(i, k)}>
+                            Remove column
+                          </button>
                         )}
                       </div>
-                    );
-                  })}
+                    ))}
+                    {page.columns < MAX_COLUMNS && (
+                      <button
+                        type="button"
+                        className="sheet-add add-column"
+                        style={{ gridRow: "1 / -1" }}
+                        onClick={() => addColumn(i)}
+                        aria-label={`Page ${i + 1}: add a column`}
+                      >
+                        + Add column
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="sheet-controls">
+                  <span>Page {i + 1}</span>
+                  <label>
+                    Band{" "}
+                    <select value={page.band?.at ?? "none"} onChange={(e) => setBand(i, e.target.value as "none")}>
+                      <option value="none">None</option>
+                      <option value="top">Top</option>
+                      <option value="bottom">Bottom</option>
+                    </select>
+                  </label>
+                  {page.band && page.columns > 1 && (
+                    <label>
+                      Width{" "}
+                      <select value={page.band.rail} onChange={(e) => setRail(i, e.target.value as Rail)}>
+                        <option value="none">All columns</option>
+                        <option value="left">Leave a column on the left</option>
+                        <option value="right">Leave a column on the right</option>
+                      </select>
+                    </label>
+                  )}
+                  {i > 0 && (
+                    <span className="page-actions">
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => movePage(i, -1)}
+                        disabled={i === 1}
+                        aria-label={`Move page ${i + 1} left`}
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => movePage(i, 1)}
+                        disabled={i === pages.length - 1}
+                        aria-label={`Move page ${i + 1} right`}
+                      >
+                        →
+                      </button>
+                      <button type="button" className="link" onClick={() => change(pages.filter((_, n) => n !== i))}>
+                        Remove
+                      </button>
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="sheet-controls">
-                <span>Page {i + 1}</span>
-                <button type="button" className="link layout-button" onClick={() => setLayoutFor(i)}>
-                  <LayoutIcon layout={page.layout} /> {LAYOUTS[page.layout].label}
-                </button>
-                {i > 0 && (
-                  <span className="page-actions">
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() => movePage(i, -1)}
-                      disabled={i === 1}
-                      aria-label={`Move page ${i + 1} left`}
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() => movePage(i, 1)}
-                      disabled={i === pages.length - 1}
-                      aria-label={`Move page ${i + 1} right`}
-                    >
-                      →
-                    </button>
-                    <button type="button" className="link" onClick={() => change(pages.filter((_, j) => j !== i))}>
-                      Remove
-                    </button>
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {pages.length < MAX_PAGES && (
             <button
               type="button"
               className="add-page"
-              onClick={() => change([...pages, { layout: "single", slots: [null] }])}
+              onClick={() => change([...pages, { columns: 1, band: null, stacks: [[]] }])}
             >
               + Add a page
             </button>
@@ -415,45 +581,22 @@ export function PageBuilder({
         </Dialog>
       )}
 
-      {layoutFor !== null && (
-        <Dialog label={`Layout for page ${layoutFor + 1}`} onClose={() => setLayoutFor(null)}>
-          <strong>Layout for page {layoutFor + 1}</strong>
-          {Object.entries(LAYOUTS).map(([key, layout]) => (
-            <button
-              key={key}
-              type="button"
-              className="layout-choice"
-              aria-pressed={pages[layoutFor].layout === key}
-              onClick={() => {
-                setLayout(layoutFor, key as Page["layout"]);
-                setLayoutFor(null);
-              }}
-            >
-              <LayoutIcon layout={key as Page["layout"]} /> {layout.label}
-            </button>
-          ))}
-          <button type="button" className="link" onClick={() => setLayoutFor(null)}>
-            Cancel
-          </button>
-        </Dialog>
-      )}
-
-      {picking && (
-        <Dialog label={`Choose a section for page ${picking.page + 1}`} onClose={() => setPicking(null)}>
+      {adding && (
+        <Dialog label={`Add a section to page ${adding.page + 1}`} onClose={() => setAdding(null)}>
           <strong>
-            Page {picking.page + 1}, slot {picking.slot + 1}
+            Page {adding.page + 1}, {adding.column < 0 ? "band" : `column ${adding.column + 1}`}
           </strong>
-          {!available.some((s) => fitsAt(s, picking)) && <p className="muted">No other section fits this slot.</p>}
+          {!available.some((s) => fitsAt(s, adding)) && <p className="muted">No other section fits here.</p>}
           {available
-            .filter((s) => fitsAt(s, picking))
+            .filter((s) => fitsAt(s, adding))
             .map((s, k) => (
               <button
                 key={s.title}
                 type="button"
                 autoFocus={k === 0}
                 onClick={() => {
-                  place(picking, s);
-                  setPicking(null);
+                  move(adding, { section: s, length: "medium" });
+                  setAdding(null);
                 }}
               >
                 {s.title}{" "}
@@ -463,32 +606,66 @@ export function PageBuilder({
                 </span>
               </button>
             ))}
-          {pages[picking.page].slots[picking.slot] && (
-            <>
-              {!pages[picking.page].slots[picking.slot]!.kind && (
+          <button type="button" className="link" onClick={() => setAdding(null)}>
+            Cancel
+          </button>
+        </Dialog>
+      )}
+
+      {editing && editingItem && (
+        <Dialog label={editingItem.section.title} onClose={() => setEditing(null)}>
+          <strong>{editingItem.section.title}</strong>
+          {!editingItem.section.kind && (
+            <span className="lengths" role="group" aria-label="Length">
+              {Object.entries(LENGTHS).map(([key, label]) => (
                 <button
+                  key={key}
                   type="button"
-                  onClick={() => {
-                    openForm(pages[picking.page].slots[picking.slot]!);
-                    setPicking(null);
-                  }}
+                  className="button"
+                  aria-pressed={editingItem.length === key}
+                  onClick={() => edit((next) => (itemAt(next, editing)!.length = key as Item["length"]))}
                 >
-                  Edit {pages[picking.page].slots[picking.slot]!.title}
+                  {label}
                 </button>
-              )}
+              ))}
+            </span>
+          )}
+          {editing.column >= 0 &&
+            moves(pages[editing.page], editing).map(({ label, to }) => (
               <button
+                key={label}
                 type="button"
+                disabled={!canPut(editingItem.section, to, editing)}
                 onClick={() => {
-                  place(picking, null);
-                  setPicking(null);
+                  move(to, editingItem, editing);
+                  setEditing(null);
                 }}
               >
-                Clear this slot
+                {label}
               </button>
-            </>
+            ))}
+          {!editingItem.section.kind && (
+            <button
+              type="button"
+              onClick={() => {
+                openForm(editingItem.section);
+                setEditing(null);
+              }}
+            >
+              Edit {editingItem.section.title}
+            </button>
           )}
-          <button type="button" className="link" onClick={() => setPicking(null)}>
-            Cancel
+          <button
+            type="button"
+            onClick={() => {
+              edit((next) => take(next, editing));
+              setEditing(null);
+            }}
+          >
+            Remove from the page
+          </button>
+          <button type="button" className="link" onClick={() => setEditing(null)}>
+            Done
           </button>
         </Dialog>
       )}
@@ -497,3 +674,23 @@ export function PageBuilder({
 }
 
 const isPreset = (title: string) => PRESET_SECTIONS.some((p) => p.title === title);
+
+const itemAt = (pages: Draft[], { page, column, index }: Spot) =>
+  column < 0 ? pages[page].band?.item : pages[page].stacks[column][index];
+
+// Where a section in a column can move with one click: up, down, or to the end of the next column.
+function moves(page: Draft, { page: i, column, index }: Spot) {
+  const options = [
+    index > 0 && { label: "Move up", to: { page: i, column, index: index - 1 } },
+    index < page.stacks[column].length - 1 && { label: "Move down", to: { page: i, column, index: index + 2 } },
+    column > 0 && {
+      label: "Move to the column on the left",
+      to: { page: i, column: column - 1, index: page.stacks[column - 1].length },
+    },
+    column < page.columns - 1 && {
+      label: "Move to the column on the right",
+      to: { page: i, column: column + 1, index: page.stacks[column + 1].length },
+    },
+  ];
+  return options.filter((o) => !!o);
+}

@@ -2,7 +2,7 @@
 
 // Small pieces of the Customize page.
 import { useEffect } from "react";
-import { area, LAYOUTS, type Feature } from "@/lib/settings";
+import type { Feature } from "@/lib/settings";
 
 // A small centered dialog. Clicking outside it or pressing Escape closes it.
 export function Dialog({
@@ -28,18 +28,7 @@ export function Dialog({
   );
 }
 
-// A tiny drawing of a page layout's slots.
-export function LayoutIcon({ layout }: { layout: keyof typeof LAYOUTS }) {
-  return (
-    <span className="layout-icon" style={{ gridTemplate: LAYOUTS[layout].grid }} aria-hidden>
-      {LAYOUTS[layout].slots.map((_, j) => (
-        <span key={j} style={{ gridArea: area(j) }} />
-      ))}
-    </span>
-  );
-}
-
-// A sketch of how the weather or a puzzle looks in print, shown in its slot.
+// A sketch of how the weather or a puzzle looks in print, shown in its section.
 const CROSSWORD = "0010000100000001010000100"; // 1 = black square
 
 export function FeaturePreview({ kind }: { kind: Feature }) {

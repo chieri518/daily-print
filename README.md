@@ -57,9 +57,10 @@ When that works, deploy to Vercel with the API key, so the paper is made while y
 | [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start or stop an edition, connect Google, make a printer key |
 | [app/api/](app/api/) | The daily scheduler (`cron`), the printer box's API (`printer`) and the Google Calendar connection (`google`) |
 | [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, draw, print the PDF and save it |
-| [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, layouts, sections) and the rules for valid settings |
+| [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, columns, sections) and the rules for valid settings |
 | [lib/editor.ts](lib/editor.ts), [lib/claude.ts](lib/claude.ts) | The editor's research and writing, and the calls to Claude with their cost |
-| [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts), [lib/render.ts](lib/render.ts) | The newspaper layout, and printing it to PDF with headless Chromium |
+| [lib/space.ts](lib/space.ts) | How much space each section gets on the page, and so how many words |
+| [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts), [lib/render.ts](lib/render.ts) | The newspaper layout, and printing it to PDF with headless Chromium (shrinking text that's too long, and placing fillers) |
 | [lib/weather.ts](lib/weather.ts), [lib/puzzles.ts](lib/puzzles.ts), [lib/illustrate.ts](lib/illustrate.ts), [lib/google.ts](lib/google.ts) | The forecast, puzzles, pictures and birthdays |
 | [lib/schedule.ts](lib/schedule.ts), [lib/printer.ts](lib/printer.ts), [lib/allowed.ts](lib/allowed.ts) | Scheduling morning papers, printer keys, and who can get editions |
 | [public/printer/](public/printer/) | The printer box's install and print scripts |

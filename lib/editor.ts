@@ -3,14 +3,14 @@ import { ask } from "./claude.ts";
 import { makePuzzles, type Puzzles } from "./puzzles.ts";
 import {
   FEATURES,
-  illustratedSlot,
-  LAYOUTS,
+  illustrated,
   MAIN_STORY_WORDS,
+  pageItems,
   READING_LEVELS,
-  slotWords,
   TONES,
   type Settings,
 } from "./settings.ts";
+import { measure, pictureWords, words } from "./space.ts";
 import type { Forecast } from "./weather.ts";
 
 const Story = z.object({
@@ -30,11 +30,12 @@ const Stories = z.object({
     })
     .describe("A picture for one light or neutral story; see the rules"),
   pages: z
-    .array(z.object({ slots: z.array(z.object({ stories: z.array(Story) })) }))
-    .describe("Every page and slot from the plan, in the same order"),
+    .array(z.object({ sections: z.array(z.object({ stories: z.array(Story) })) }))
+    .describe("Every page and section from the plan, in the same order"),
 });
 
-// The small extras, written alongside the stories by a faster model: the weather tip, puzzles, quiz, word and comic.
+// The small extras, written alongside the stories by a faster model: the weather tip, puzzles, quiz, word, comic and
+// fillers.
 const Extras = z.object({
   weatherTip: z
     .string()
@@ -71,6 +72,15 @@ const Extras = z.object({
         .describe("Exactly 4 panels; the last one has the punchline"),
     })
     .describe("A cute four-panel comic strip"),
+  fillers: z
+    .object({
+      quote: z.object({ text: z.string(), by: z.string() }).describe("A short quote, ideally said in today's news"),
+      funFact: z.string().describe("One surprising fact in a sentence, linked to a story when possible"),
+      onThisDay: z
+        .string()
+        .describe("One sentence about something that happened on today's date in history, with the year"),
+    })
+    .describe("Small items printed where a column has space left"),
 });
 
 export type Story = z.infer<typeof Story>;
@@ -87,36 +97,36 @@ export function assemble(edition: Edition, forecast: Forecast | null, seed: stri
 }
 
 // Every section of stories in the paper. Weather and puzzles are made separately.
-const storySections = (settings: Settings) => settings.pages.flatMap((p) => p.slots.filter((s) => !s.kind));
+const storySections = (settings: Settings) =>
+  settings.pages.flatMap((p) => pageItems(p).map((item) => item.section)).filter((s) => !s.kind);
 
-// The page plan: which section goes in each slot, and how many words fit there.
+// The page plan: every section, where it goes, and how many words fit there.
 function pagePlan(settings: Settings) {
-  const illustrated = illustratedSlot(settings.pages[0]);
   return settings.pages
     .map((page, i) => {
-      const slots = page.slots.map((s, j) => {
-        if (s.kind) return `  - Slot ${j + 1}: ${FEATURES[s.kind].title}. Made automatically: leave its stories empty.`;
-        const words = slotWords(i, page.layout, j);
-        const slot = LAYOUTS[page.layout].slots[j];
-        const picture = ("picture" in slot && slot.picture) || 0;
+      const space = measure(page, i === 0, settings.paperSize);
+      const lines = pageItems(page).map(({ section: s }, j) => {
+        const where = page.band && j === 0 ? `band across the ${page.band.at}` : "a column";
+        const name = s.kind ? FEATURES[s.kind].title : `${s.title} (${s.about})`;
+        if (s.kind) return `  - Section ${j + 1} (${where}): ${name}. Made automatically: leave its stories empty.`;
+        const fit = words(space[j]);
         const size =
-          i === 0 && j === illustrated
-            ? `About ${words} words with the illustration, or ${words + picture} without it.`
-            : `About ${words} words.`;
-        return `  - Slot ${j + 1}: ${s.title} (${s.about}). ${size}`;
+          i === 0 && j === 0 && illustrated(settings)
+            ? `About ${fit - pictureWords(space[0].width)} words with the illustration, or ${fit} without it.`
+            : `About ${fit} words.`;
+        return `  - Section ${j + 1} (${where}): ${name}. ${size}`;
       });
-      return `Page ${i + 1}${i === 0 ? " (front page, below the masthead)" : ""}:\n${slots.join("\n")}`;
+      return `Page ${i + 1}${i === 0 ? " (front page, below the masthead)" : ""}:\n${lines.join("\n")}`;
     })
     .join("\n");
 }
 
 // Where the illustration may go, and what it may never show.
 function pictureRule(settings: Settings) {
-  const slot = illustratedSlot(settings.pages[0]);
-  if (slot < 0) return "- This paper has no illustration: leave it empty.";
-  return `- The illustration goes with one light or neutral story in front-page slot ${slot + 1} (${
-    settings.pages[0].slots[slot].title
-  }). Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra words instead. Put the illustrated story first in its slot.`;
+  if (!illustrated(settings)) return "- This paper has no illustration: leave it empty.";
+  return `- The illustration goes with one light or neutral story in the front page's band (${
+    settings.pages[0].band!.item.section.title
+  }). Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra words instead. Put the illustrated story first in its section.`;
 }
 
 // What the reader asked for beyond the page plan, for both steps.
@@ -156,7 +166,7 @@ export async function write(settings: Settings, date: string, notes: string, for
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
 Today is ${date}. Write today's stories from the research notes below.
 
-The paper has ${settings.pages.length} pages. Each page is split into slots, and each slot holds one section:
+The paper has ${settings.pages.length} pages of columns, some with a band across the top or bottom:
 ${pagePlan(settings)}
 
 Rules:
@@ -164,8 +174,8 @@ Rules:
 - News stories must only use facts from the notes, and must list their sources.
 - Pieces you write yourself, such as editorials and analysis, must say so in their label (e.g. "Editorial").
 - The word counts are limits: the paper is printed, and text that doesn't fit is cut off. Stay at or under them.
-- A slot of under ${MAIN_STORY_WORDS} words holds one story. Bigger slots hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
-- Don't tell the same story in two slots.
+- A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
+- Don't tell the same story in two sections.
 - Write like a good newspaper: clear, concrete and short paragraphs.
 ${pictureRule(settings)}
 ${preferences(settings)}
@@ -178,7 +188,7 @@ ${notes}`,
       `You make the extras for "${settings.name}", a printed newspaper for one reader in ${
         settings.location
       }. Today is ${date}.
-From today's research notes below, write the weather tip, the puzzle words, the quiz, the word of the day and the comic.
+From today's research notes below, write the weather tip, the puzzle words, the quiz, the word of the day, the comic and the fillers.
 
 Rules:
 - Write in English. Tone: ${TONES[settings.tone].guide}.

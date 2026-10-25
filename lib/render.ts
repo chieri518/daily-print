@@ -11,6 +11,7 @@ export async function renderPdf(html: string) {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });
     const overflowing = await page.evaluate(shrinkToFit);
+    await page.evaluate(placeFillers);
     const pdf = await page.pdf({ preferCSSPageSize: true });
     return { pdf, overflowing };
   } finally {
@@ -18,15 +19,30 @@ export async function renderPdf(html: string) {
   }
 }
 
-// Runs in the browser: shrinks the text on each page until every slot fits, and returns the pages that still don't.
+// Runs in the browser: shrinks the text on each page until every section fits, and returns the pages that still don't.
 async function shrinkToFit() {
   await document.fonts.ready;
   const overflowing: number[] = [];
   document.querySelectorAll<HTMLElement>(".content").forEach((content, i) => {
-    const slots = [...content.querySelectorAll<HTMLElement>(".slot")];
-    const tooTall = () => slots.some((slot) => slot.scrollHeight > slot.clientHeight);
+    const sections = [...content.querySelectorAll<HTMLElement>(".section, .stack")];
+    const tooTall = () => sections.some((s) => s.scrollHeight > s.clientHeight);
     for (let size = 9.75; tooTall() && size >= 7.5; size -= 0.25) content.style.fontSize = `${size}pt`;
     if (tooTall()) overflowing.push(i + 1);
   });
   return overflowing;
+}
+
+// Runs in the browser: puts each filler (quote, fun fact, on this day) at the bottom of the first column (or band) with
+// room for it, where nothing on the page overflows. Fillers that fit nowhere are left out.
+function placeFillers() {
+  const fits = (page: Element) =>
+    [...page.querySelectorAll<HTMLElement>(".section, .stack, .band")].every((e) => e.scrollHeight <= e.clientHeight);
+  const sections = [...document.querySelectorAll<HTMLElement>(".stack > .section:last-child, .band > .section")];
+  for (const filler of document.querySelectorAll<HTMLElement>(".fillers .filler")) {
+    for (const section of sections) {
+      section.append(filler);
+      if (fits(section.closest(".page")!)) break;
+      filler.remove();
+    }
+  }
 }

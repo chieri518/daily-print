@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { disconnectGoogle, saveSettings } from "../actions";
-import { PageBuilder, type Draft } from "./page-builder";
+import { PageBuilder } from "./page-builder";
 import { Printing } from "./printing";
 import {
   DEFAULT_CAST,
@@ -14,6 +14,7 @@ import {
   TEMPERATURES,
   TONES,
   TYPEFACES,
+  type Draft,
   type Settings,
 } from "@/lib/settings";
 
@@ -48,8 +49,8 @@ export function Customizer({
   const unsaved = json !== savedJson;
 
   // Why the paper can't be saved yet, if anything is missing.
-  const problem = !pages.every((p) => p.slots.every(Boolean))
-    ? "Fill the dashed slots on your pages."
+  const problem = !pages.every((p) => p.stacks.every((s) => s.length) && (!p.band || p.band.item))
+    ? "Every column and band needs a section."
     : !settings.name.trim()
     ? "Add a paper name in Paper & style."
     : !settings.location.trim()

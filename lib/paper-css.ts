@@ -17,9 +17,17 @@ footer { display: flex; justify-content: space-between; border-top: 1px solid #0
 .illustration.empty { display: flex; align-items: flex-end; border: 1px dashed #000; padding: 0.5em; }
 .illustration figcaption { font-size: 0.8em; font-style: italic; }
 
-/* Slots: each page is a grid of sections (see LAYOUTS in settings.ts) */
-.slots { flex: 1; min-height: 0; display: grid; gap: 1em 1.5em; }
-.slot { min-height: 0; overflow: hidden; }
+/* Columns: each page is a grid of columns, and maybe a band (see layout.ts) */
+.columns { flex: 1; min-height: 0; display: grid; gap: 1em 1.5em; }
+.stack, .band { display: flex; flex-direction: column; gap: 1em; min-height: 0; overflow: hidden; }
+.section { min-height: 0; overflow: hidden; }
+
+/* Fillers: render.ts moves them into columns with space left */
+.fillers { display: none; }
+.filler { margin-top: 0.8em; padding: 0.5em 0; border-top: 3px double #000; border-bottom: 1px solid #000; text-align: center; }
+.filler b { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.1em; }
+.filler p { font-family: var(--headline), serif; font-style: italic; margin-top: 0.2em; }
+.filler .by { font-family: var(--body), serif; font-style: normal; font-size: 0.85em; }
 .section-title { font-family: var(--headline), serif; font-size: 1.2em; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 3px double #000; padding-bottom: 2pt; margin-bottom: 0.6em; }
 
 /* Stories */
@@ -48,7 +56,7 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 /* Puzzles */
 table { border-collapse: collapse; margin: 0 auto 0.6em; }
 .sudoku td, .crossword td, .letters td { border: 1px solid #000; text-align: center; padding: 0; }
-.sudoku td { width: 2em; height: 2em; font-size: 1.1em; }
+.sudoku td { width: 1.75em; height: 1.75em; font-size: 1.05em; }
 .sudoku tr:nth-child(3n) td { border-bottom-width: 2px; }
 .sudoku td:nth-child(3n) { border-right-width: 2px; }
 .sudoku tr:first-child td { border-top-width: 2px; }
@@ -62,7 +70,7 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
 .crossword sup { position: absolute; top: 1px; left: 2px; font-size: 0.55em; line-height: 1; }
 .clues { flex: 1; min-width: 14em; font-size: 0.85em; }
 .clues p { margin-bottom: 0.15em; }
-.letters td { width: 1.45em; height: 1.45em; border: none; font-size: 1.05em; letter-spacing: 0; }
+.letters td { width: 1.3em; height: 1.3em; border: none; font-size: 1.05em; letter-spacing: 0; }
 .word-search .words { text-align: center; font-size: 0.85em; }
 .trivia { padding-left: 1.3em; }
 .trivia li { margin-bottom: 0.5em; }
@@ -74,14 +82,15 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
 
 /* Jumble and Word of the Day */
 .jumble { display: grid; gap: 0.6em; }
-.jumble-word { display: flex; gap: 1em; align-items: center; }
+.jumble-word { display: flex; flex-wrap: wrap; gap: 0.3em 1em; align-items: center; }
 .jumble-word span span { display: inline-block; width: 1.6em; height: 1.6em; margin-right: 2px; text-align: center; line-height: 1.6em; border: 1px solid #000; }
 .jumble-word .tiles span { font-weight: bold; border-radius: 50%; }
 .word-of-the-day p { margin-bottom: 0.3em; }
 .word-of-the-day .word { font-family: var(--headline), serif; font-size: 1.6em; }
 .word-of-the-day .example { font-style: italic; }
 
-.comic img { width: 100%; aspect-ratio: 3 / 1; object-fit: contain; filter: grayscale(1); }
-.comic-text { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5em; }
+.comic img { display: block; width: 100%; filter: grayscale(1); }
+.comic-text { display: grid; gap: 0.5em; }
+.comic-text.strip { grid-template-columns: repeat(4, 1fr); }
 .comic-text p { border: 1px solid #000; padding: 0.4em; font-size: 0.85em; }
 `;
