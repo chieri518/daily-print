@@ -65,7 +65,7 @@ export function PageBuilder({
     { name: "Your sections", sections: available.filter((s) => !isPreset(s.title)) },
   ];
 
-  // Every change to the pages can be undone.
+  // Every change to the pages can be undone. Undo clears the selection, which may be a page or spot that's gone.
   const change = (next: Page[]) => {
     setHistory([...history, pages]);
     setPages(next);
@@ -73,6 +73,13 @@ export function PageBuilder({
   const undo = () => {
     setPages(history.at(-1)!);
     setHistory(history.slice(0, -1));
+    setSelected(null);
+  };
+  // The default pages, with the reader's own version of each ready-made section.
+  const resetPages = () => {
+    const own = (s: Section | null) => s && (sections.find((c) => c.title === s.title) ?? s);
+    change(DEFAULT_PAGES.map((p) => ({ ...p, slots: p.slots.map(own) })));
+    setSelected(null);
   };
   const withSlot = (pages: Page[], { page, slot }: Spot, section: Section | null) =>
     pages.map((p, i) => (i === page ? { ...p, slots: p.slots.map((s, j) => (j === slot ? section : s)) } : p));
@@ -128,6 +135,8 @@ export function PageBuilder({
 
   // Saves a new or edited section, and updates it wherever it's placed. Only a name is needed: without a
   // description, the editor covers the news about that name. Returns false if the name is taken.
+  // Like the list of sections, an edit can't be undone, so it's made in the undo history too: undoing a move after a
+  // rename keeps the new name.
   const saveSection = (original: string, section: Section) => {
     const lower = section.title.toLowerCase();
     if (sections.some((s) => s.title.toLowerCase() === lower && s.title !== original)) return false;
@@ -137,9 +146,14 @@ export function PageBuilder({
         ? settings.customSections.map((c) => (c.title === original ? section : c))
         : [...settings.customSections, section],
     });
-    if (original)
-      change(pages.map((p) => ({ ...p, slots: p.slots.map((s) => (s?.title === original ? section : s)) })));
-    if (!original) setSelected({ type: "listed", title: section.title });
+    if (original) {
+      const edited = (pages: Page[]) =>
+        pages.map((p) => ({ ...p, slots: p.slots.map((s) => (s?.title === original ? section : s)) }));
+      setPages(edited(pages));
+      setHistory(history.map(edited));
+    }
+    // A new section, or one renamed in the list, stays selected under its new name.
+    if (!original || selected?.type === "listed") setSelected({ type: "listed", title: section.title });
     return true;
   };
 
@@ -275,7 +289,7 @@ export function PageBuilder({
       <div className="builder-bar">
         <span>
           Go back to:{" "}
-          <button type="button" className="link" onClick={() => change(DEFAULT_PAGES)}>
+          <button type="button" className="link" onClick={resetPages}>
             Default pages
           </button>
         </span>

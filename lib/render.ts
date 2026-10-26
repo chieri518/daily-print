@@ -33,8 +33,10 @@ async function shrinkToFit() {
 }
 
 // Runs in the browser: puts each filler (quote, fun fact, on this day) at the bottom of the first section with room for
-// it. Fillers that fit nowhere are left out.
+// it. Fillers that fit nowhere are left out. The comic shrinks to fit its spot, so it's fixed at its size first:
+// otherwise a filler would squeeze it instead of overflowing.
 function placeFillers() {
+  for (const comic of document.querySelectorAll<HTMLElement>(".comic")) comic.style.flex = `0 0 ${comic.offsetHeight}px`;
   const sections = [...document.querySelectorAll<HTMLElement>(".page .section")];
   for (const filler of document.querySelectorAll<HTMLElement>(".fillers .filler")) {
     for (const section of sections) {

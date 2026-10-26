@@ -56,6 +56,7 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | While a section is dragged, the spots it fits **light up** and the others dim. The weather, puzzles and comic need spots of a minimum size | Readers couldn't tell what goes where |
 | Switching to the new pages **starts everyone on new default pages**; other settings are kept | Only the owner and a few testers use it |
 | Three tabs (Pages, Paper & style, Writing & sources), Undo, and a save bar that always says what's going on | |
+| **Undo covers where sections go**, not what a section says. Renaming or editing a section also changes it in the undo history, and "Default pages" uses the reader's own version of each section | Each spot keeps a copy of its section, so undoing past an edit brought back the old name and the same section could be placed twice. Storing only section names in spots would avoid copies, but changes the saved settings |
 | Typeface chosen from three cards showing the paper in that typeface | |
 | No browser pop-ups | The owner's browser blocks them |
 
