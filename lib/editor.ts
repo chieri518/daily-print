@@ -1,16 +1,8 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
 import { makePuzzles, type Puzzles } from "./puzzles.ts";
-import {
-  FEATURES,
-  illustrated,
-  MAIN_STORY_WORDS,
-  pageItems,
-  READING_LEVELS,
-  TONES,
-  type Settings,
-} from "./settings.ts";
-import { measure, pictureWords, words } from "./space.ts";
+import { FEATURES, MAIN_STORY_WORDS, READING_LEVELS, TONES, type Section, type Settings } from "./settings.ts";
+import { illustratedSpot, measure, pictureWords, words } from "./space.ts";
 import type { Forecast } from "./weather.ts";
 
 const Story = z.object({
@@ -80,7 +72,7 @@ const Extras = z.object({
         .string()
         .describe("One sentence about something that happened on today's date in history, with the year"),
     })
-    .describe("Small items printed where a column has space left"),
+    .describe("Small items printed where a section has space left"),
 });
 
 export type Story = z.infer<typeof Story>;
@@ -98,35 +90,37 @@ export function assemble(edition: Edition, forecast: Forecast | null, seed: stri
 
 // Every section of stories in the paper. Weather and puzzles are made separately.
 const storySections = (settings: Settings) =>
-  settings.pages.flatMap((p) => pageItems(p).map((item) => item.section)).filter((s) => !s.kind);
+  settings.pages.flatMap((p) => p.slots).filter((s): s is Section => !!s && !s.kind);
 
-// The page plan: every section, where it goes, and how many words fit there.
+// The page plan: every section in order, and how many words fit in its spot. Empty spots are left out.
 function pagePlan(settings: Settings) {
+  const illustrated = illustratedSpot(settings);
   return settings.pages
     .map((page, i) => {
       const space = measure(page, i === 0, settings.paperSize);
-      const lines = pageItems(page).map(({ section: s }, j) => {
-        const where = page.band && j === 0 ? `band across the ${page.band.at}` : "a column";
-        const name = s.kind ? FEATURES[s.kind].title : `${s.title} (${s.about})`;
-        if (s.kind) return `  - Section ${j + 1} (${where}): ${name}. Made automatically: leave its stories empty.`;
-        const fit = words(space[j]);
+      const lines = page.slots.flatMap((s, j) => {
+        if (!s) return [];
+        if (s.kind) return [`${FEATURES[s.kind].title}. Made automatically: leave its stories empty.`];
+        const fit = words(space[j]!);
         const size =
-          i === 0 && j === 0 && illustrated(settings)
-            ? `About ${fit - pictureWords(space[0].width)} words with the illustration, or ${fit} without it.`
+          i === 0 && j === illustrated
+            ? `About ${fit - pictureWords(space[j]!.width)} words with the illustration, or ${fit} without it.`
             : `About ${fit} words.`;
-        return `  - Section ${j + 1} (${where}): ${name}. ${size}`;
+        return [`${s.title} (${s.about}). ${size}`];
       });
-      return `Page ${i + 1}${i === 0 ? " (front page, below the masthead)" : ""}:\n${lines.join("\n")}`;
+      const list = lines.map((line, k) => `  - Section ${k + 1}: ${line}`).join("\n");
+      return `Page ${i + 1}${i === 0 ? " (front page, below the masthead)" : ""}:\n${list}`;
     })
     .join("\n");
 }
 
 // Where the illustration may go, and what it may never show.
 function pictureRule(settings: Settings) {
-  if (!illustrated(settings)) return "- This paper has no illustration: leave it empty.";
-  return `- The illustration goes with one light or neutral story in the front page's band (${
-    settings.pages[0].band!.item.section.title
-  }). Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra words instead. Put the illustrated story first in its section.`;
+  const spot = illustratedSpot(settings);
+  if (spot < 0) return "- This paper has no illustration: leave it empty.";
+  return `- The illustration goes with one light or neutral story in the front page's ${
+    settings.pages[0].slots[spot]!.title
+  } section. Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra words instead. Put the illustrated story first in its section.`;
 }
 
 // What the reader asked for beyond the page plan, for both steps.
@@ -166,7 +160,7 @@ export async function write(settings: Settings, date: string, notes: string, for
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
 Today is ${date}. Write today's stories from the research notes below.
 
-The paper has ${settings.pages.length} pages of columns, some with a band across the top or bottom:
+The paper has ${settings.pages.length} pages. Each page is split into sections:
 ${pagePlan(settings)}
 
 Rules:

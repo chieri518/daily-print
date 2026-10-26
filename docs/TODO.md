@@ -23,10 +23,28 @@ Everything is built; these steps get it running. Do them in order.
 
 Replaces free columns (see DECISIONS.md, Customize page).
 
-- [ ] Settings and print: 8 layouts on a 3-column grid; empty spots merge into a neighbour; word counts from each spot's size
-- [ ] Customize: side panel (section, empty spot, page), dragging that lights up where a section fits, choosing a layout when adding a page
-- [ ] New default pages
+- [x] Settings and print: 8 layouts on a 3-column grid; empty spots merge into a neighbour; word counts from each spot's size
+- [x] Customize: side panel (section, empty spot, page), dragging that lights up where a section fits, choosing a layout when adding a page
+- [x] New default pages
 - [ ] Make a real edition and check on paper: gaps, word counts, fillers, the vertical comic
+
+## Fixes from the code review (Oct 25)
+
+Bugs:
+
+- [ ] Customize crashes after Undo or "Default pages" when the selected page or spot no longer exists: clear the selection in both (`page-builder.tsx`)
+- [ ] Fillers go into the comic's section, which shrinks the drawing and overlaps it: skip sections with a comic in `placeFillers` (`render.ts`)
+- [ ] A feature's fit is only checked when it's dropped: changing the paper size afterwards can save a feature that no longer fits, and it prints cut off
+- [ ] Undo after renaming a section restores the old title on the page but not in the list, so the section can be placed twice
+- [ ] Renaming a section selected from the list leaves the side panel blank (the selection keeps the old title)
+
+Cleanup:
+
+- [ ] Build the grid-template-areas string in one helper (now in `page-builder.tsx`, `parts.tsx` and `layout.ts`)
+- [ ] `measure()` repeats the cell lookup from `filledAreas`; the spot letter → index conversion is written out twice
+- [ ] `illustratedSpot`: decide "two columns wide" by counting tracks (4 or more), not page-width arithmetic with a 0.1in fudge
+- [ ] Dragging re-renders the whole builder on every `dragover`: only update when the spot under the cursor changes
+- [ ] `illustrate.ts`: move the `openai()` comment back above its function (it now sits above `OPENAI_SIZES`)
 
 ## Soon: quality
 

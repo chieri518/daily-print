@@ -32,14 +32,14 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | **AI-drawn**, never photos taken from news sites | News photos are copyrighted. Openly licensed photos (Wikimedia Commons) remain an option |
 | OpenAI (`gpt-image-2`) or Google, whichever has a key. Without a key, the paper prints a placeholder box | OpenAI is tested; Google isn't |
 | **Illustration:** pen and ink, 3:1, on the front page only, in the first story spot at least two columns wide. The editor picks a **light or neutral** story for it, never violence, death, war, disasters, crime or grief, and skips it on a heavy news day | It used to illustrate the first story, whatever it was. In a narrow column a 3:1 picture is too small |
-| **Comic strip:** four cute black-and-white panels with speech bubbles, starring a cast the reader describes (default: a skeptical gray cat and an over-excited pigeon). A gentle, non-partisan joke about a light story. **Vertical** (four panels stacked) in a one-column spot, or a **strip** in a wide one; the paper picks whichever fits | The same cast description keeps the characters alike. No real people. Strip-only left a lot of empty space under it |
+| **Comic strip:** four cute black-and-white panels with speech bubbles, starring a cast the reader describes (default: a skeptical gray cat and an over-excited pigeon). A gentle, non-partisan joke about a light story. a **strip** in a wide spot, four panels **stacked** in a tall narrow one, or **2 × 2** otherwise; the paper picks whichever suits the spot, and the drawing shrinks rather than being cut off | The same cast description keeps the characters alike. No real people. Strip-only left a lot of empty space under it, and a stacked comic in a short spot was cut off |
 
 ## The paper's sections
 
 | Decision | Why |
 |---|---|
 | Ready-made sections (Top Stories, Local News, World, Business, Tech, Science, Sports, Culture, Opinion, On This Day) plus the reader's own. Each is used once. All can be edited; ready-made ones keep their name | |
-| **Weather:** a 5-day forecast with icons, an almanac line (sunrise, sunset, daylight, moon, air quality) and a one-line umbrella or jacket tip. °F or °C is a setting | From Open-Meteo (free, no key) |
+| **Weather:** a 5-day forecast with icons (one row per day in a narrow spot), an almanac line (sunrise, sunset, daylight, moon, air quality) and a one-line umbrella or jacket tip. °F or °C is a setting | From Open-Meteo (free, no key) |
 | **Puzzles:** Sudoku, Mini Crossword, Word Search, Jumble, News Quiz. Code makes the grids, so they're always valid; Claude picks the words and clues. Each prints yesterday's answers below it | Puzzles are saved with each edition, for the next day's answers |
 | **Word of the Day**, and **Birthdays today** from Google Calendar: a slim line under the masthead, only on days with birthdays | Birthday names never go to Claude |
 | Puzzles stay inside the paper; the weather, comic and word of the day can go on the front page | |

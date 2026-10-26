@@ -32,82 +32,95 @@ export const PAPER_SIZES = {
 // Wind speed follows the temperature: mph with Fahrenheit, km/h with Celsius.
 export const TEMPERATURES = { fahrenheit: "°F (Fahrenheit)", celsius: "°C (Celsius)" };
 
-// A page is 1 to 3 columns of up to 3 sections, stacked top to bottom, with an optional band for wide items at the top or
-// bottom. The band covers every column, or all but the first or last (the "rail", which then runs the full height).
-// How much space each section gets is worked out in space.ts.
-export const LENGTHS = { short: "Short", medium: "Medium", long: "Long" }; // only stories have a length
+// Ready-made page layouts on a grid of 6 tracks, so a third of the page is 2 tracks and a half is 3. `areas` are CSS
+// grid-template-areas: each letter is a spot, filled with the page's sections in order (a, b, c…). `rows` are the
+// rows' relative heights. How big each spot is in print is worked out in space.ts.
+export const LAYOUTS = {
+  leadColumns: { label: "Lead + 3 columns", rows: [2, 3], areas: ["a a a a a a", "b b c c d d"] },
+  leadRail: { label: "Lead + rail", rows: [1, 1, 1], areas: ["a a a a b b", "a a a a c c", "a a a a d d"] },
+  threeColumns: { label: "Three columns", rows: [1], areas: ["a a b b c c"] },
+  leadHalves: { label: "Lead + two halves", rows: [2, 3], areas: ["a a a a a a", "b b b c c c"] },
+  columnsStrip: { label: "Columns + strip", rows: [3, 2], areas: ["a a b b c c", "d d d d d d"] },
+  sixBoxes: { label: "Six small boxes", rows: [1, 1], areas: ["a a b b c c", "d d e e f f"] },
+  featureRailStrip: {
+    label: "Feature + rail + strip",
+    rows: [3, 3, 4],
+    areas: ["a a a a b b", "a a a a c c", "d d d d d d"],
+  },
+  twoColumnsStacked: { label: "Two columns, stacked", rows: [1, 1], areas: ["a a a b b b", "c c c d d d"] },
+};
+export type Layout = keyof typeof LAYOUTS;
+
+// The number of spots in a layout.
+export const spotCount = (layout: Layout) => new Set(LAYOUTS[layout].areas.join(" ").split(" ")).size;
+
+// Spots wider than this (in inches) get the comic as a strip.
+export const STRIP_WIDTH = 4;
 
 // Sections with room for at least this many words hold a main story and shorter ones. Smaller ones hold one story.
 export const MAIN_STORY_WORDS = 250;
 
-// Whether the front page's band holds stories. The illustration goes there; without one, no illustration is made.
-export const illustrated = (settings: Settings) => !!settings.pages[0].band && !settings.pages[0].band.item.section.kind;
+// The comic's shape in a spot: a 3:1 strip when it's wide, four panels stacked (1:2) when it's tall enough, or 2 × 2.
+export function comicShape({ width, height }: { width: number; height: number }) {
+  if (width > STRIP_WIDTH) return "strip";
+  return height >= 0.35 + 2 * width ? "tall" : "square";
+}
 
-// Every section on a page, in order: the band first, then each column top to bottom.
-export const pageItems = (page: Draft) => [...(page.band?.item ? [page.band.item] : []), ...page.stacks.flat()];
+// A height in inches for spots one third, a half, two thirds or all of the page wide.
+const byWidth =
+  ([third, half, twoThirds, full]: number[]) =>
+  (width: number) =>
+    width < 3 ? third : width < 4.5 ? half : width < 6 ? twoThirds : full;
 
-// The comic is a strip in a wide space (wider than this, in inches), or four panels stacked in a column.
-export const STRIP_WIDTH = 4;
-
-// Sections that aren't stories. Each has a fixed design, so it needs a minimum width, and takes about `height` inches
-// at a given width (in inches, used to size the stories around it). Puzzles stay inside the paper; the weather, comic
-// and word of the day can go on the front page.
+// Sections that aren't stories. Each has a fixed design, so it only goes in a spot at least `height(width)` tall, in
+// inches: measured in print with the Classic typeface, title and yesterday's answers included. Puzzles stay inside the
+// paper; the weather, comic and word of the day can go on the front page.
 export const FEATURES = {
   weather: {
     title: "Weather",
     about: "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
-    minWidth: 3.5,
-    height: () => 1.9,
+    height: byWidth([2.3, 2.7, 2.2, 2.1]),
     frontPage: true,
   },
   crossword: {
     title: "Mini Crossword",
     about: "a small crossword with clues from today's stories",
-    minWidth: 2.2,
-    height: (w: number) => (w > STRIP_WIDTH ? 3.4 : 4.9), // the clues go beside the grid, or below it
+    height: byWidth([6.4, 5.2, 3.8, 3.4]),
     frontPage: false,
   },
-  sudoku: { title: "Sudoku", about: "a sudoku puzzle", minWidth: 2.2, height: () => 4, frontPage: false },
+  sudoku: { title: "Sudoku", about: "a sudoku puzzle", height: () => 4.3, frontPage: false },
   wordSearch: {
     title: "Word Search",
     about: "words from today's stories hidden in a grid",
-    minWidth: 2.2,
-    height: () => 3,
+    height: byWidth([3.4, 3.3, 3.1, 3.1]),
     frontPage: false,
   },
   trivia: {
     title: "News Quiz",
     about: "five questions about today's stories",
-    minWidth: 1.5,
-    height: (w: number) => (w < 3 ? 3.4 : 2.6),
+    height: byWidth([4.2, 3.3, 3.1, 2.2]),
     frontPage: false,
   },
   jumble: {
     title: "Jumble",
     about: "four scrambled words from today's stories",
-    minWidth: 1.6,
-    height: (w: number) => (w < 3 ? 3.3 : 2.4),
+    height: byWidth([3.1, 2, 2, 2]),
     frontPage: false,
   },
   comic: {
     title: "Comic Strip",
     about: "a cute four-panel comic about the day's news, starring your cast",
-    minWidth: 1.5,
-    height: (w: number) => 0.35 + (w > STRIP_WIDTH ? w / 3 : w * 2), // a 3:1 strip, or panels stacked 1:2
+    // A strip in a wide spot, or 2 × 2 panels; the drawing may shrink a little to fit.
+    height: (w: number) => 0.35 + 0.85 * (w > STRIP_WIDTH ? w / 3 : w),
     frontPage: true,
   },
   wordOfTheDay: {
     title: "Word of the Day",
     about: "an interesting word, what it means and how to use it",
-    minWidth: 1.5,
-    height: (w: number) => (w < 3 ? 1.6 : 1.2),
+    height: byWidth([1.6, 1.6, 1.2, 1.2]),
     frontPage: true,
   },
-} satisfies Record<
-  string,
-  { title: string; about: string; minWidth: number; height: (width: number) => number; frontPage: boolean }
->;
-
+} satisfies Record<string, { title: string; about: string; height: (width: number) => number; frontPage: boolean }>;
 
 export const DEFAULT_CAST = "a skeptical gray cat and an over-excited pigeon";
 
@@ -133,18 +146,11 @@ export const Section = z.object({
   kind: choice(FEATURES).optional(), // empty for a section of stories
 });
 
-export const MAX_COLUMNS = 3;
-export const MAX_STACK = 3; // sections in one column
-
-const Item = z.object({ section: Section, length: choice(LENGTHS).default("medium") });
-
+// A page: its layout, and the section in each spot. An empty spot (null) is taken by a section next to it.
 export const Page = z
-  .object({
-    columns: z.number().int().min(1).max(MAX_COLUMNS),
-    band: z.object({ item: Item, at: z.enum(["top", "bottom"]), rail: z.enum(["none", "left", "right"]) }).nullable(),
-    stacks: z.array(z.array(Item).min(1, "Every column needs a section").max(MAX_STACK)),
-  })
-  .refine((p) => p.stacks.length === p.columns, "Every column needs a section");
+  .object({ layout: choice(LAYOUTS), slots: z.array(Section.nullable()) })
+  .refine((p) => p.slots.length === spotCount(p.layout), "Every spot needs a section or null")
+  .refine((p) => p.slots.some(Boolean), "Every page needs a section");
 
 export const MAX_PAGES = 8;
 
@@ -187,12 +193,7 @@ export async function settingsFor(db: SupabaseClient, userId: string) {
 
 export type Section = z.infer<typeof Section>;
 export type Feature = keyof typeof FEATURES;
-export type Item = z.infer<typeof Item>;
 export type Page = z.infer<typeof Page>;
-// A page while it's being edited in Customize: a column can be empty, and the band can have no section yet.
-export type Draft = Omit<Page, "band"> & {
-  band: (Omit<NonNullable<Page["band"]>, "item"> & { item: Item | null }) | null;
-};
 export type Settings = z.infer<typeof Settings>;
 
 // Ready-made sections. Readers can also make their own.
@@ -210,9 +211,9 @@ export const PRESET_SECTIONS: Section[] = [
   ...Object.entries(FEATURES).map(([kind, f]) => ({ title: f.title, about: f.about, kind: kind as Feature })),
 ];
 
-// Whether a section can go in a space this many inches wide on this page. Stories fit anywhere.
-export function fits(section: Section, page: number, width: number) {
+// Whether a section can go in a spot this size (in inches) on this page. Stories fit anywhere.
+export function fits(section: Section, page: number, { width, height }: { width: number; height: number }) {
   if (!section.kind) return true;
   const feature = FEATURES[section.kind];
-  return width >= feature.minWidth && (page > 0 || feature.frontPage);
+  return height >= feature.height(width) && (page > 0 || feature.frontPage);
 }

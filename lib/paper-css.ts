@@ -17,12 +17,11 @@ footer { display: flex; justify-content: space-between; border-top: 1px solid #0
 .illustration.empty { display: flex; align-items: flex-end; border: 1px dashed #000; padding: 0.5em; }
 .illustration figcaption { font-size: 0.8em; font-style: italic; }
 
-/* Columns: each page is a grid of columns, and maybe a band (see layout.ts) */
-.columns { flex: 1; min-height: 0; display: grid; gap: 1em 1.5em; }
-.stack, .band { display: flex; flex-direction: column; gap: 1em; min-height: 0; overflow: hidden; }
-.section { min-height: 0; overflow: hidden; }
+/* Spots: each page is its layout's grid of 6 tracks (see LAYOUTS in settings.ts), one section per spot */
+.spots { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1em 1.5em; }
+.section { display: flex; flex-direction: column; min-height: 0; overflow: hidden; container-type: inline-size; }
 
-/* Fillers: render.ts moves them into columns with space left */
+/* Fillers: render.ts moves them into sections with space left */
 .fillers { display: none; }
 .filler { margin-top: 0.8em; padding: 0.5em 0; border-top: 3px double #000; border-bottom: 1px solid #000; text-align: center; }
 .filler b { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -55,22 +54,22 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 
 /* Puzzles */
 table { border-collapse: collapse; margin: 0 auto 0.6em; }
-.sudoku td, .crossword td, .letters td { border: 1px solid #000; text-align: center; padding: 0; }
-.sudoku td { width: 1.75em; height: 1.75em; font-size: 1.05em; }
+.sudoku td, .crossword td, .letters td { border: 1px solid #000; text-align: center; padding: 0; line-height: 1; }
+.sudoku td { width: 1.6em; height: 1.6em; font-size: 1em; }
 .sudoku tr:nth-child(3n) td { border-bottom-width: 2px; }
 .sudoku td:nth-child(3n) { border-right-width: 2px; }
 .sudoku tr:first-child td { border-top-width: 2px; }
 .sudoku td:first-child { border-left-width: 2px; }
 .sudoku.mini { margin: 0 0 0.5em; }
-.sudoku.mini td { width: 1.25em; height: 1.25em; font-size: 0.7em; }
+.sudoku.mini td { width: 1.1em; height: 1.1em; font-size: 0.6em; }
 .crossword { display: flex; flex-wrap: wrap; gap: 0 1.5em; align-items: flex-start; }
 .crossword table { margin: 0 0 0.6em; }
-.crossword td { width: 1.9em; height: 1.9em; position: relative; }
+.crossword td { width: 1.6em; height: 1.6em; position: relative; }
 .crossword td.black { border: none; }
 .crossword sup { position: absolute; top: 1px; left: 2px; font-size: 0.55em; line-height: 1; }
 .clues { flex: 1; min-width: 14em; font-size: 0.85em; }
 .clues p { margin-bottom: 0.15em; }
-.letters td { width: 1.3em; height: 1.3em; border: none; font-size: 1.05em; letter-spacing: 0; }
+.letters td { width: 1.15em; height: 1.15em; border: none; font-size: 1.05em; letter-spacing: 0; }
 .word-search .words { text-align: center; font-size: 0.85em; }
 .trivia { padding-left: 1.3em; }
 .trivia li { margin-bottom: 0.5em; }
@@ -89,8 +88,28 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
 .word-of-the-day .word { font-family: var(--headline), serif; font-size: 1.6em; }
 .word-of-the-day .example { font-style: italic; }
 
-.comic img { display: block; width: 100%; filter: grayscale(1); }
+/* The comic shrinks to fit its spot rather than being cut off */
+.comic { flex: 0 1 auto; min-height: 0; display: flex; }
+.comic img { width: 100%; max-height: 100%; object-fit: contain; object-position: top; filter: grayscale(1); }
 .comic-text { display: grid; gap: 0.5em; }
 .comic-text.strip { grid-template-columns: repeat(4, 1fr); }
+.comic-text.square { grid-template-columns: repeat(2, 1fr); }
 .comic-text p { border: 1px solid #000; padding: 0.4em; font-size: 0.85em; }
+
+/* In a wide spot, the crossword's clues use two columns */
+@container (min-width: 5in) {
+  .clues { columns: 2; column-gap: 1.5em; }
+}
+
+/* The weather in a narrow spot: one row per day */
+@container (max-width: 3.4in) {
+  .weather .days { grid-template-columns: 1fr; }
+  .weather .day { flex-direction: row; justify-content: space-between; gap: 0.4em; border-left: none; border-top: 1px solid #000; padding: 0 0.3em; }
+  .weather .day:first-child { border-top: none; }
+  .weather .icon { width: 1.4em; height: 1.4em; }
+  .weather .day strong { width: 3em; text-align: left; }
+  .weather .condition, .weather .day .small { display: none; }
+  .almanac { font-size: 0.7em; }
+  .weather-tip { font-size: 1em; }
+}
 `;

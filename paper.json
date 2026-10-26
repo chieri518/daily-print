@@ -9,152 +9,74 @@
   "location": "San Francisco Bay Area",
   "pages": [
     {
-      "columns": 3,
-      "band": {
-        "item": {
-          "section": {
-            "title": "Top Stories",
-            "about": "the most important stories of the day, from any topic"
-          },
-          "length": "long"
+      "layout": "leadRail",
+      "slots": [
+        {
+          "title": "Top Stories",
+          "about": "the most important stories of the day, from any topic"
         },
-        "at": "top",
-        "rail": "none"
-      },
-      "stacks": [
-        [
-          {
-            "section": {
-              "title": "Bay Area",
-              "about": "local news from San Francisco, Oakland, San Jose and the Peninsula"
-            },
-            "length": "medium"
-          }
-        ],
-        [
-          {
-            "section": {
-              "title": "Tech",
-              "about": "startups, venture funding, AI and big tech"
-            },
-            "length": "medium"
-          }
-        ],
-        [
-          {
-            "section": {
-              "title": "Comic Strip",
-              "about": "a cute four-panel comic about the day's news, starring your cast",
-              "kind": "comic"
-            },
-            "length": "medium"
-          },
-          {
-            "section": {
-              "title": "Word of the Day",
-              "about": "an interesting word, what it means and how to use it",
-              "kind": "wordOfTheDay"
-            },
-            "length": "medium"
-          }
-        ]
+        {
+          "title": "Weather",
+          "about": "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
+          "kind": "weather"
+        },
+        {
+          "title": "Comic Strip",
+          "about": "a cute four-panel comic about the day's news, starring your cast",
+          "kind": "comic"
+        },
+        {
+          "title": "Word of the Day",
+          "about": "an interesting word, what it means and how to use it",
+          "kind": "wordOfTheDay"
+        }
       ]
     },
     {
-      "columns": 2,
-      "band": {
-        "item": {
-          "section": {
-            "title": "Weather",
-            "about": "a five-day forecast, sunrise, sunset, moon and air quality, and whether to bring an umbrella or a jacket",
-            "kind": "weather"
-          },
-          "length": "medium"
+      "layout": "leadHalves",
+      "slots": [
+        {
+          "title": "Tech",
+          "about": "startups, venture funding, AI and big tech"
         },
-        "at": "top",
-        "rail": "none"
-      },
-      "stacks": [
-        [
-          {
-            "section": {
-              "title": "Business",
-              "about": "markets, companies and the economy"
-            },
-            "length": "long"
-          }
-        ],
-        [
-          {
-            "section": {
-              "title": "Opinion",
-              "about": "an editorial written by the editor about a story in this edition"
-            },
-            "length": "medium"
-          }
-        ]
+        {
+          "title": "Business",
+          "about": "markets, companies and the economy"
+        },
+        {
+          "title": "Opinion",
+          "about": "an editorial written by the editor about a story in this edition"
+        }
       ]
     },
     {
-      "columns": 3,
-      "band": {
-        "item": {
-          "section": {
-            "title": "Mini Crossword",
-            "about": "a small crossword with clues from today's stories",
-            "kind": "crossword"
-          },
-          "length": "medium"
+      "layout": "sixBoxes",
+      "slots": [
+        {
+          "title": "Sudoku",
+          "about": "a sudoku puzzle",
+          "kind": "sudoku"
         },
-        "at": "bottom",
-        "rail": "none"
-      },
-      "stacks": [
-        [
-          {
-            "section": {
-              "title": "Sudoku",
-              "about": "a sudoku puzzle",
-              "kind": "sudoku"
-            },
-            "length": "medium"
-          },
-          {
-            "section": {
-              "title": "Jumble",
-              "about": "four scrambled words from today's stories",
-              "kind": "jumble"
-            },
-            "length": "medium"
-          }
-        ],
-        [
-          {
-            "section": {
-              "title": "Word Search",
-              "about": "words from today's stories hidden in a grid",
-              "kind": "wordSearch"
-            },
-            "length": "medium"
-          },
-          {
-            "section": {
-              "title": "News Quiz",
-              "about": "five questions about today's stories",
-              "kind": "trivia"
-            },
-            "length": "medium"
-          }
-        ],
-        [
-          {
-            "section": {
-              "title": "On This Day",
-              "about": "a short history piece about something that happened on this date"
-            },
-            "length": "long"
-          }
-        ]
+        {
+          "title": "Word Search",
+          "about": "words from today's stories hidden in a grid",
+          "kind": "wordSearch"
+        },
+        {
+          "title": "On This Day",
+          "about": "a short history piece about something that happened on this date"
+        },
+        {
+          "title": "Jumble",
+          "about": "four scrambled words from today's stories",
+          "kind": "jumble"
+        },
+        {
+          "title": "News Quiz",
+          "about": "five questions about today's stories",
+          "kind": "trivia"
+        },
+        null
       ]
     }
   ],

@@ -1,30 +1,25 @@
 "use client";
 
 // Small pieces of the Customize page.
-import { useEffect } from "react";
-import type { Feature } from "@/lib/settings";
+import { LAYOUTS, spotCount, type Feature, type Layout } from "@/lib/settings";
+import { spotLetter } from "@/lib/space";
 
-// A small centered dialog. Clicking outside it or pressing Escape closes it.
-export function Dialog({
-  label,
-  onClose,
-  children,
-}: {
-  label: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  useEffect(() => {
-    const close = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [onClose]);
+// A tiny drawing of a layout's spots.
+export function LayoutThumb({ layout }: { layout: Layout }) {
+  const { rows, areas } = LAYOUTS[layout];
   return (
-    <div className="picker-backdrop" onClick={onClose}>
-      <div className="picker" role="dialog" aria-label={label} onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
+    <span
+      className="layout-thumb"
+      style={{
+        gridTemplateAreas: areas.map((row) => `"${row}"`).join(" "),
+        gridTemplateRows: rows.map((r) => `${r}fr`).join(" "),
+      }}
+      aria-hidden
+    >
+      {Array.from({ length: spotCount(layout) }, (_, j) => (
+        <span key={j} style={{ gridArea: spotLetter(j) }} />
+      ))}
+    </span>
   );
 }
 

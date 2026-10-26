@@ -3,18 +3,16 @@ import { esc } from "./html.ts";
 import { css } from "./paper-css.ts";
 import { crosswordHtml, jumbleHtml, sudokuHtml, triviaHtml, wordSearchHtml, type Puzzles } from "./puzzles.ts";
 import {
+  comicShape,
   fontsUrl,
-  illustrated,
+  LAYOUTS,
   MAIN_STORY_WORDS,
-  pageItems,
   PAPER_SIZES,
-  STRIP_WIDTH,
   TYPEFACES,
   type Feature,
-  type Item,
   type Settings,
 } from "./settings.ts";
-import { BAND_SHARE, gridPlaces, measure, WEIGHT, words } from "./space.ts";
+import { filledAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
 import { todayLine, weatherHtml } from "./weather.ts";
 
 // Builds the newspaper as one HTML document, one <section> per printed page.
@@ -44,10 +42,11 @@ export function layout(
   const illustration = images.illustration
     ? `<figure class="illustration"><img src="${images.illustration}" alt=""></figure>`
     : `<figure class="illustration empty"><figcaption>Illustration: ${esc(scene)}</figcaption></figure>`;
-  const figureFor = (s: Story, page: number, section: number) =>
-    scene && page === 0 && section === 0 && illustrated(settings) && s.headline === headline ? illustration : "";
+  const illustrated = illustratedSpot(settings);
+  const figureFor = (s: Story, page: number, slot: number) =>
+    scene && page === 0 && slot === illustrated && s.headline === headline ? illustration : "";
 
-  const features: Record<Feature, (width: number) => string> = {
+  const features: Record<Feature, (size: Size) => string> = {
     weather: () => weatherHtml(paper.forecast, paper.weatherTip),
     crossword: () => crosswordHtml(paper.puzzles.crossword, yesterday?.crossword),
     sudoku: () => sudokuHtml(paper.puzzles.sudoku, yesterday?.sudoku),
@@ -55,10 +54,10 @@ export function layout(
     trivia: () => triviaHtml(paper.puzzles.trivia, yesterday?.trivia),
     jumble: () => jumbleHtml(paper.puzzles.jumble!, yesterday?.jumble),
     // Without an image key, the comic prints as its four panels in words.
-    comic: (width) =>
+    comic: (size) =>
       images.comic
         ? `<figure class="comic"><img src="${images.comic}" alt=""></figure>`
-        : `<div class="comic-text${width > STRIP_WIDTH ? " strip" : ""}">${paper.comic.panels
+        : `<div class="comic-text ${comicShape(size)}">${paper.comic.panels
             .map((p) => `<p>${esc(p.scene)}${p.dialogue ? ` <b>“${esc(p.dialogue)}”</b>` : ""}</p>`)
             .join("")}</div>`,
     wordOfTheDay: () => {
@@ -68,62 +67,37 @@ export function layout(
     },
   };
 
-  // Each page is a grid: one row of columns, plus a row for the band if it has one. Stories in a column share its
-  // height by their length; the weather and puzzles take the height they need.
+  // Each page is its layout's grid. Empty spots are taken over by a section next to them (see filledAreas).
   const pages = settings.pages.map((page, i) => {
     const space = measure(page, i === 0, settings.paperSize);
     const stories = paper.pages[i]?.sections ?? [];
-    const section = (item: Item, j: number, columns: number, grow: number) => {
-      const [lead, ...others] = stories[j]?.stories ?? [];
-      const big = words(space[j]) >= MAIN_STORY_WORDS;
-      const kind = item.section.kind;
-      const content = kind
-        ? features[kind](space[j].width)
-        : `${lead ? story(lead, big ? "lead" : "", figureFor(lead, i, j)) : ""}
+    let k = 0; // the editor writes stories for the filled spots, in order
+    const sections = page.slots.map((section, j) => {
+      if (!section) return "";
+      const size = space[j]!;
+      const [lead, ...others] = stories[k++]?.stories ?? [];
+      const content = section.kind
+        ? features[section.kind](size)
+        : `${lead ? story(lead, words(size) >= MAIN_STORY_WORDS ? "lead" : "", figureFor(lead, i, j)) : ""}
            ${others.map((s) => story(s, "", figureFor(s, i, j))).join("")}`;
-      // Stories share the free height by `grow`; the weather and puzzles keep the height they need, and grow only to
-      // take what's left.
-      return `<div class="section" style="--columns: ${columns}; flex: ${grow} ${kind ? "0 auto" : "1 0"}">
-        <h3 class="section-title">${esc(item.section.title)}</h3>
+      return `<div class="section" style="grid-area: ${spotLetter(j)}; --columns: ${textColumns(size.width)}">
+        <h3 class="section-title">${esc(section.title)}</h3>
         ${content}
       </div>`;
-    };
-
-    const { band, columns } = page;
-    const places = gridPlaces(page);
-    let j = band ? 1 : 0;
-    const stacks = page.stacks.map((stack, k) => {
-      // The stories share the column; with none, the last section takes what's left (for fillers).
-      const grows = stack.map((s, n) =>
-        s.section.kind ? (stack.every((x) => x.section.kind) && n === stack.length - 1 ? 1 : 0) : WEIGHT[s.length],
-      );
-      const { column, row } = places.column(k);
-      return `<div class="stack" style="grid-column: ${column}; grid-row: ${row}">${stack
-        .map((s, n) => section(s, j++, 1, grows[n]))
-        .join("")}</div>`;
     });
-    const bandHtml = band
-      ? `<div class="band" style="grid-column: ${places.band.column}; grid-row: ${places.band.row}">${section(
-          band.item,
-          0,
-          band.rail === "none" ? columns : columns - 1,
-          1,
-        )}</div>`
-      : "";
-    // A band of stories gets its share of the height; the weather or a puzzle in the band takes what it needs.
-    const share = band && !band.item.section.kind ? BAND_SHARE[band.item.length] : null;
-    const bandSize = share ? `${share}fr` : "auto";
-    const restSize = share ? `${1 - share}fr` : "1fr";
-    const rows = !band ? "1fr" : band.at === "top" ? `${bandSize} ${restSize}` : `${restSize} ${bandSize}`;
+    const areas = filledAreas(page)
+      .map((row) => `"${row.join(" ")}"`)
+      .join(" ");
+    const rows = LAYOUTS[page.layout].rows.map((r) => `minmax(0, ${r}fr)`).join(" ");
     return `${
       i === 0 ? masthead : ""
-    }<div class="columns" style="grid-template: ${rows} / repeat(${columns}, 1fr)">${bandHtml}${stacks.join("")}</div>`;
+    }<div class="spots" style='grid-template-areas: ${areas}; grid-template-rows: ${rows}'>${sections.join("")}</div>`;
   });
 
-  // Small items for columns with space left. render.ts puts each where it fits, or leaves it out. "On this day" is left
-  // out when the paper has a section of that name.
+  // Small items for sections with space left. render.ts puts each where it fits, or leaves it out. "On this day" is
+  // left out when the paper has a section of that name.
   const { quote, funFact, onThisDay } = paper.fillers;
-  const hasOnThisDay = settings.pages.some((p) => pageItems(p).some((item) => item.section.title === "On This Day"));
+  const hasOnThisDay = settings.pages.some((p) => p.slots.some((s) => s?.title === "On This Day"));
   const fillers = `<div class="fillers">
     <aside class="filler"><b>Quote of the day</b><p>“${esc(quote.text)}”</p><p class="by">${esc(quote.by)}</p></aside>
     <aside class="filler"><b>Fun fact</b><p>${esc(funFact)}</p></aside>

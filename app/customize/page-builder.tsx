@@ -1,54 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, FeaturePreview } from "./parts";
+import { FeaturePreview, LayoutThumb } from "./parts";
 import defaults from "@/paper.json";
 import {
+  FEATURES,
   fits,
-  LENGTHS,
-  MAX_COLUMNS,
+  LAYOUTS,
   MAX_PAGES,
-  MAX_STACK,
-  pageItems,
   PAPER_SIZES,
   PRESET_SECTIONS,
   Settings,
+  spotCount,
   TYPEFACES,
-  type Draft,
-  type Item,
+  type Layout,
   type Page,
   type Section,
 } from "@/lib/settings";
-import { columnHeight, gridPlaces, measure, widths, words } from "@/lib/space";
+import { filledAreas, measure, spotLetter, words } from "@/lib/space";
 
 // The pages every new reader starts with.
 const DEFAULT_PAGES = Settings.parse(defaults).pages;
 
-// Below this, a story is little more than a headline: the preview warns about it.
-const MIN_WORDS = 60;
+type Spot = { page: number; slot: number };
+// What the side panel shows: a spot on a page, a page, a section in the list, or a form for a new page or section.
+type Selected =
+  | ({ type: "spot" } & Spot)
+  | { type: "page"; page: number }
+  | { type: "listed"; title: string }
+  | { type: "newPage" }
+  | { type: "newSection" };
 
-// A place for a section: a position in a column (index = the column's length adds it at the end), or the band
-// (column -1).
-type Spot = { page: number; column: number; index: number };
+const same = (a?: Spot | null, b?: Spot | null) => !!a && !!b && a.page === b.page && a.slot === b.slot;
+const isPreset = (title: string) => PRESET_SECTIONS.some((p) => p.title === title);
 
-const same = (a?: Spot | null, b?: Spot | null) =>
-  !!a && !!b && a.page === b.page && a.column === b.column && a.index === b.index;
-
-type Rail = NonNullable<Page["band"]>["rail"];
-
-// Takes the section at a spot out of the pages. `pages` is a copy being changed.
-function take(pages: Draft[], { page, column, index }: Spot) {
-  if (column >= 0) pages[page].stacks[column].splice(index, 1);
-  else pages[page].band!.item = null;
-}
-
-function put(pages: Draft[], { page, column, index }: Spot, item: Item) {
-  if (column >= 0) pages[page].stacks[column].splice(index, 0, item);
-  else pages[page].band!.item = item;
-}
-
-// The pages as small previews: columns of sections, and maybe a band. Sections go in by dragging them, or by clicking
-// "+" and choosing one. Clicking a section sets its length, moves it or removes it.
+// The pages as small previews of their layouts. Sections are dragged from the list into spots (the spots where one
+// fits light up), and everything about the selected spot, section or page is set in the side panel.
 export function PageBuilder({
   settings,
   set,
@@ -57,24 +44,20 @@ export function PageBuilder({
 }: {
   settings: Settings;
   set: (change: Partial<Settings>) => void;
-  pages: Draft[];
-  setPages: (pages: Draft[]) => void;
+  pages: Page[];
+  setPages: (pages: Page[]) => void;
 }) {
-  const [history, setHistory] = useState<Draft[][]>([]);
-  const [dragged, setDragged] = useState<{ item: Item; from?: Spot } | null>(null);
+  const [history, setHistory] = useState<Page[][]>([]);
+  const [dragged, setDragged] = useState<{ section: Section; from?: Spot } | null>(null);
   const [over, setOver] = useState<Spot | "list" | null>(null);
-  const [adding, setAdding] = useState<Spot | null>(null); // where a section chosen from the list goes
-  const [editing, setEditing] = useState<Spot | null>(null); // the placed section whose options are open
-  // The section being added or edited. `original` is its name before editing; empty for a new section.
-  const [form, setForm] = useState<{ original: string; title: string; about: string; sources: string } | null>(null);
-  const [nameTaken, setNameTaken] = useState(false);
+  const [selected, setSelected] = useState<Selected | null>(null);
 
   // Every section the reader can use. The reader's own version of a ready-made section replaces it.
   const sections = [
     ...PRESET_SECTIONS.map((p) => settings.customSections.find((c) => c.title === p.title) ?? p),
     ...settings.customSections.filter((c) => !isPreset(c.title)),
   ];
-  const placed = new Set(pages.flatMap((p) => pageItems(p).map((item) => item.section.title)));
+  const placed = new Set(pages.flatMap((p) => p.slots.map((s) => s?.title)));
   const available = sections.filter((s) => !placed.has(s.title));
   const groups = [
     { name: "News", sections: available.filter((s) => !s.kind && isPreset(s.title)) },
@@ -82,144 +65,72 @@ export function PageBuilder({
     { name: "Your sections", sections: available.filter((s) => !isPreset(s.title)) },
   ];
 
-  // Every change to the pages can be undone. `edit` changes a copy of the pages.
-  const change = (next: Draft[]) => {
+  // Every change to the pages can be undone.
+  const change = (next: Page[]) => {
     setHistory([...history, pages]);
     setPages(next);
-  };
-  const edit = (update: (next: Draft[]) => void) => {
-    const next = structuredClone(pages);
-    update(next);
-    change(next);
   };
   const undo = () => {
     setPages(history.at(-1)!);
     setHistory(history.slice(0, -1));
   };
+  const withSlot = (pages: Page[], { page, slot }: Spot, section: Section | null) =>
+    pages.map((p, i) => (i === page ? { ...p, slots: p.slots.map((s, j) => (j === slot ? section : s)) } : p));
 
-  // Puzzles and the weather need a minimum width (see `fits`).
-  const fitsAt = (section: Section, spot: Spot, inPages = pages) => {
-    const width = widths(inPages[spot.page], settings.paperSize);
-    return fits(section, spot.page, spot.column < 0 ? width.band : width.column);
-  };
-  // A section can go to a spot if it fits there, and the column has room (or it's moving within that column).
-  const room = (to: Spot, from?: Spot) =>
-    to.column < 0 ||
-    pages[to.page].stacks[to.column].length < MAX_STACK ||
-    (from?.page === to.page && from.column === to.column);
-  const canPut = (section: Section, to: Spot, from?: Spot) => fitsAt(section, to) && room(to, from);
+  // A spot's own size, as if every spot were filled. Puzzles, the weather and the comic need room (see `fits`).
+  const spotSize = ({ page, slot }: Spot, layout = pages[page].layout) =>
+    measure({ layout, slots: Array(spotCount(layout)).fill(true) }, page === 0, settings.paperSize)[slot]!;
+  const fitsAt = (section: Section | null, spot: Spot, layout?: Layout) =>
+    !section || fits(section, spot.page, spotSize(spot, layout));
+  // A section can go in a spot if it fits, and when swapping, if the section already there fits where it came from.
+  const canDrop = (spot: Spot, section: Section, from?: Spot) =>
+    fitsAt(section, spot) && (!from || fitsAt(pages[spot.page].slots[spot.slot], from));
 
-  // After the columns or band change, sections that no longer fit go back to the list.
-  const prune = (page: Draft, i: number, inPages: Draft[]) => {
-    page.stacks = page.stacks.map((stack, k) =>
-      stack.filter((item, n) => fitsAt(item.section, { page: i, column: k, index: n }, inPages)),
-    );
-    if (page.band?.item && !fitsAt(page.band.item.section, { page: i, column: -1, index: 0 }, inPages))
-      page.band.item = null;
-  };
-
-  // Moves a section to a spot (from another spot, or from the list). The band holds one section: the one already
-  // there goes back to where the new one came from, if it fits, or to the list.
-  const move = (to: Spot, item: Item, from?: Spot) =>
-    edit((next) => {
-      const replaced = to.column < 0 ? next[to.page].band!.item : null;
-      if (from) take(next, from);
-      const shifted = from && from.page === to.page && from.column === to.column && from.index < to.index;
-      put(next, shifted ? { ...to, index: to.index - 1 } : to, item);
-      if (replaced && from && fitsAt(replaced.section, from)) put(next, from, replaced);
-    });
-
-  // What dropping the dragged section here would do, shown while dragging over it.
-  const dropLabel = (spot: Spot) => {
-    if (!dragged || same(dragged.from, spot)) return null;
-    if (!fitsAt(dragged.item.section, spot)) return "Doesn't fit";
-    if (!room(spot, dragged.from)) return "Column is full";
-    if (spot.column < 0) return pages[spot.page].band!.item ? (dragged.from ? "Swap" : "Replace") : "Place";
-    return "Put here";
+  // Puts a section in a spot. If it came from another spot, the two swap.
+  const place = (to: Spot, section: Section | null, from?: Spot) => {
+    let next = withSlot(pages, to, section);
+    if (from) next = withSlot(next, from, pages[to.page].slots[to.slot]);
+    change(next);
   };
   const drop = (spot: Spot) => {
-    if (dragged && !same(dragged.from, spot) && canPut(dragged.item.section, spot, dragged.from))
-      move(spot, dragged.item, dragged.from);
+    if (dragged && !same(dragged.from, spot) && canDrop(spot, dragged.section, dragged.from)) {
+      place(spot, dragged.section, dragged.from);
+      setSelected({ type: "spot", ...spot });
+    }
     endDrag();
   };
   const endDrag = () => {
     setDragged(null);
     setOver(null);
   };
-  // Drag-and-drop handlers for a drop spot.
-  const dropTarget = (spot: Spot) => ({
-    onDragOver: (e: React.DragEvent) => {
-      e.preventDefault();
-      setOver(spot);
-    },
-    onDragLeave: () => setOver(null),
-    onDrop: () => drop(spot),
-  });
-  const labelAt = (spot: Spot) => (same(over as Spot, spot) ? dropLabel(spot) : null);
-  const dropClass = (label: string | null) =>
-    !label ? "" : label === "Doesn't fit" || label === "Column is full" ? " blocked" : " over";
 
-  // Adds an empty column on the right; columns get narrower, so puzzles that no longer fit go back to the list.
-  const addColumn = (i: number) =>
-    edit((next) => {
-      next[i].stacks.push([]);
-      next[i].columns++;
-      prune(next[i], i, next);
-    });
-  // Removes an empty column. With one column left, the band covers it.
-  const removeColumn = (i: number, k: number) =>
-    edit((next) => {
-      const page = next[i];
-      page.stacks.splice(k, 1);
-      page.columns--;
-      if (page.columns === 1 && page.band) page.band.rail = "none";
-    });
-  const setBand = (i: number, at: "none" | "top" | "bottom") =>
-    edit((next) => {
-      const page = next[i];
-      page.band = at === "none" ? null : { item: null, rail: "none", ...page.band, at };
-      prune(page, i, next);
-    });
-  const setRail = (i: number, rail: Rail) =>
-    edit((next) => {
-      next[i].band!.rail = rail;
-      prune(next[i], i, next);
-    });
-
+  // Gives a page a new layout. Its sections fill the new spots in order, each in the first free spot where it fits;
+  // any that fit nowhere go back to the list.
+  const setLayout = (page: number, layout: Layout) => {
+    const slots: (Section | null)[] = Array(spotCount(layout)).fill(null);
+    for (const section of pages[page].slots) {
+      const free = slots.findIndex((s, j) => !s && fitsAt(section, { page, slot: j }, layout));
+      if (section && free >= 0) slots[free] = section;
+    }
+    change(pages.map((p, i) => (i === page ? { layout, slots } : p)));
+  };
+  const addPage = (layout: Layout) => {
+    change([...pages, { layout, slots: Array(spotCount(layout)).fill(null) }]);
+    setSelected({ type: "page", page: pages.length });
+  };
   // Swaps a page with the one next to it. The front page stays first.
   const movePage = (page: number, by: -1 | 1) => {
     const next = [...pages];
     [next[page], next[page + by]] = [next[page + by], next[page]];
     change(next);
+    setSelected({ type: "page", page: page + by });
   };
 
-  const openForm = (section?: Section) => {
-    setForm({
-      original: section?.title ?? "",
-      title: section?.title ?? "",
-      about: section?.about ?? "",
-      sources: section?.sources?.join(", ") ?? "",
-    });
-    setNameTaken(false);
-  };
-
-  // Saves a new or edited section, and updates it wherever it's placed.
-  // Only a name is needed: without a description, the editor covers the news about that name.
-  const saveSection = () => {
-    const { original } = form!;
-    const title = form!.title.trim();
-    if (!title) return;
-    const taken = sections.some((s) => s.title.toLowerCase() === title.toLowerCase() && s.title !== original);
-    setNameTaken(taken);
-    if (taken) return;
-    const section = {
-      title,
-      about: form!.about.trim() || `news about ${title}`,
-      sources: form!.sources
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
+  // Saves a new or edited section, and updates it wherever it's placed. Only a name is needed: without a
+  // description, the editor covers the news about that name. Returns false if the name is taken.
+  const saveSection = (original: string, section: Section) => {
+    const lower = section.title.toLowerCase();
+    if (sections.some((s) => s.title.toLowerCase() === lower && s.title !== original)) return false;
     const saved = settings.customSections.some((c) => c.title === original);
     set({
       customSections: saved
@@ -227,72 +138,135 @@ export function PageBuilder({
         : [...settings.customSections, section],
     });
     if (original)
-      edit((next) =>
-        next.forEach((p) =>
-          pageItems(p).forEach((item) => item.section.title === original && (item.section = section)),
-        ),
-      );
-    setForm(null);
+      change(pages.map((p) => ({ ...p, slots: p.slots.map((s) => (s?.title === original ? section : s)) })));
+    if (!original) setSelected({ type: "listed", title: section.title });
+    return true;
   };
 
   const fonts = TYPEFACES[settings.typeface];
   const size = PAPER_SIZES[settings.paperSize];
-  const removing = over === "list" && dragged?.from;
-  const editingItem = editing && itemAt(pages, editing);
 
-  // A placed section in a preview, sized like it prints.
-  const block = (item: Item, spot: Spot, height: number, inches: { width: number; height: number }) => {
-    const label = labelAt(spot);
+  // The side panel, for whatever is selected.
+  const panel = () => {
+    if (!selected) return <p className="muted">Click a section, an empty spot or a page to see its settings here.</p>;
+
+    if (selected.type === "newPage" || selected.type === "page") {
+      const page = selected.type === "page" ? selected.page : -1;
+      return (
+        <>
+          <strong>{page < 0 ? "New page: choose a layout" : `Page ${page + 1}`}</strong>
+          <div className="layout-choices">
+            {Object.entries(LAYOUTS).map(([key, layout]) => (
+              <button
+                key={key}
+                type="button"
+                className="layout-choice"
+                aria-pressed={page >= 0 && pages[page].layout === key}
+                onClick={() => (page < 0 ? addPage(key as Layout) : setLayout(page, key as Layout))}
+              >
+                <LayoutThumb layout={key as Layout} />
+                {layout.label}
+              </button>
+            ))}
+          </div>
+          {page > 0 && (
+            <span className="panel-actions">
+              <button type="button" className="link" onClick={() => movePage(page, -1)} disabled={page === 1}>
+                ← Move left
+              </button>
+              <button
+                type="button"
+                className="link"
+                onClick={() => movePage(page, 1)}
+                disabled={page === pages.length - 1}
+              >
+                Move right →
+              </button>
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  change(pages.filter((_, i) => i !== page));
+                  setSelected(null);
+                }}
+              >
+                Remove page
+              </button>
+            </span>
+          )}
+        </>
+      );
+    }
+
+    if (selected.type === "newSection")
+      return (
+        <>
+          <strong>New section</strong>
+          <SectionForm key="new" section={null} onSave={(section) => saveSection("", section)} />
+        </>
+      );
+
+    if (selected.type === "spot" && !pages[selected.page].slots[selected.slot]) {
+      const fitting = available.filter((s) => fitsAt(s, selected));
+      const grower = takenBy(pages[selected.page], selected.slot);
+      return (
+        <>
+          <strong>Empty spot on page {selected.page + 1}</strong>
+          <span className="muted">
+            {grower ? `${grower} grows into it in print. Or add a section:` : "Add a section here:"}
+          </span>
+          {fitting.map((s) => (
+            <button key={s.title} type="button" className="panel-choice" onClick={() => place(selected, s)}>
+              {s.title} <span className="muted">{s.about}</span>
+            </button>
+          ))}
+          {fitting.length < available.length && (
+            <span className="muted">Puzzles and extras that need a bigger spot aren't listed.</span>
+          )}
+        </>
+      );
+    }
+
+    // A section: in a spot, or in the list.
+    const spot = selected.type === "spot" ? selected : null;
+    const section = spot
+      ? pages[spot.page].slots[spot.slot]
+      : sections.find((s) => selected.type === "listed" && s.title === selected.title);
+    if (!section) return null;
+    const room = spot && measure(pages[spot.page], spot.page === 0, settings.paperSize)[spot.slot]!;
     return (
-      <div
-        key={`${spot.column}-${spot.index}`}
-        role="button"
-        tabIndex={0}
-        aria-label={`Page ${spot.page + 1}: ${item.section.title}. Options.`}
-        className={`sheet-item${dropClass(label)}${same(dragged?.from, spot) ? " lifted" : ""}`}
-        style={{ flex: `${height} 1 0` }}
-        draggable
-        onDragStart={() => setDragged({ item, from: spot })}
-        onDragEnd={endDrag}
-        {...dropTarget(spot)}
-        onClick={() => setEditing(spot)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setEditing(spot);
-          }
-        }}
-      >
-        {label && <span className="drop-label">{label}</span>}
-        <span className="sheet-section">{item.section.title}</span>
-        {item.section.kind ? (
-          <FeaturePreview kind={item.section.kind} />
+      <>
+        <strong>{section.title}</strong>
+        <span className="muted">
+          {spot ? `Page ${spot.page + 1}` : "In the list"}
+          {room && !section.kind && ` · about ${words(room)} words`}
+          {section.kind && ` · ${FEATURES[section.kind].about}`}
+        </span>
+        {!section.kind && (
+          <SectionForm key={section.title} section={section} onSave={(s) => saveSection(section.title, s)} />
+        )}
+        {spot ? (
+          <button type="button" className="link" onClick={() => place(spot, null)}>
+            Remove from the page
+          </button>
         ) : (
           <>
-            <span className="sheet-size">
-              {LENGTHS[item.length]} · ~{words(inches)} words
-            </span>
-            {words(inches) < MIN_WORDS && <span className="sheet-warning">Too small to read well</span>}
-            <span className="sheet-lines" />
+            <span className="muted">Drag it onto a page, or click an empty spot.</span>
+            {!isPreset(section.title) && (
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  set({ customSections: settings.customSections.filter((c) => c.title !== section.title) });
+                  setSelected(null);
+                }}
+              >
+                Delete this section
+              </button>
+            )}
           </>
         )}
-      </div>
-    );
-  };
-
-  // An empty place to add a section: the band, or the end of a column.
-  const addButton = (spot: Spot, text: string, grow: boolean) => {
-    const label = labelAt(spot);
-    return (
-      <button
-        type="button"
-        className={`sheet-add${grow ? " grow" : ""}${dropClass(label)}`}
-        aria-label={`Page ${spot.page + 1}: ${text}`}
-        onClick={() => setAdding(spot)}
-        {...dropTarget(spot)}
-      >
-        {label ? <span className="drop-label">{label}</span> : text}
-      </button>
+      </>
     );
   };
 
@@ -310,21 +284,19 @@ export function PageBuilder({
         </button>
       </div>
       <p className="muted">
-        Drag sections into the columns, or click + to add a section or a column (up to {MAX_COLUMNS} columns, with up to{" "}
-        {MAX_STACK} sections each). Click a section to set its length or move it.
+        Drag sections onto the pages: the spots where one fits light up. Click anything to change it.
       </p>
 
       <div className={`workspace${dragged ? " dragging" : ""}`}>
         <aside
-          className={`palette${dragged?.from ? " drop-target" : ""}${removing ? " over" : ""}`}
+          className={`palette${dragged?.from ? " drop-target" : ""}${over === "list" ? " over" : ""}`}
           onDragOver={(e) => {
             e.preventDefault();
             setOver("list");
           }}
           onDragLeave={() => setOver(null)}
           onDrop={() => {
-            const from = dragged?.from;
-            if (from) edit((next) => take(next, from));
+            if (dragged?.from) place(dragged.from, null);
             endDrag();
           }}
         >
@@ -335,46 +307,25 @@ export function PageBuilder({
               <div key={group.name} className="palette-group">
                 <span className="palette-heading">{group.name}</span>
                 {group.sections.map((s) => (
-                  <div
+                  <button
                     key={s.title}
-                    className={`chip${dragged?.item.section === s ? " lifted" : ""}`}
+                    type="button"
+                    className={`chip${dragged?.section === s ? " lifted" : ""}`}
+                    aria-pressed={selected?.type === "listed" && selected.title === s.title}
                     title={s.about}
                     draggable
-                    onDragStart={() => setDragged({ item: { section: s, length: "medium" } })}
+                    onDragStart={() => setDragged({ section: s })}
                     onDragEnd={endDrag}
+                    onClick={() => setSelected({ type: "listed", title: s.title })}
                   >
-                    <span>
-                      <span className="handle" aria-hidden>
-                        ⠿
-                      </span>{" "}
-                      {s.title}
-                    </span>
-                    <span className="chip-actions">
-                      {!s.kind && (
-                        <button
-                          type="button"
-                          className="link"
-                          onClick={() => openForm(s)}
-                          aria-label={`Edit ${s.title}`}
-                        >
-                          ✎
-                        </button>
-                      )}
-                      {!isPreset(s.title) && (
-                        <button
-                          type="button"
-                          className="link"
-                          onClick={() => set({ customSections: settings.customSections.filter((c) => c !== s) })}
-                          aria-label={`Delete ${s.title}`}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </span>
-                  </div>
+                    <span className="handle" aria-hidden>
+                      ⠿
+                    </span>{" "}
+                    {s.title}
+                  </button>
                 ))}
                 {group.name === "Your sections" && (
-                  <button type="button" className="link" onClick={() => openForm()}>
+                  <button type="button" className="link" onClick={() => setSelected({ type: "newSection" })}>
                     + New section
                   </button>
                 )}
@@ -384,26 +335,17 @@ export function PageBuilder({
 
         <div className="sheets">
           {pages.map((page, i) => {
+            const { rows, areas } = LAYOUTS[page.layout];
             const space = measure(page, i === 0, settings.paperSize);
-            const places = gridPlaces(page);
-            const bandSpot = { page: i, column: -1, index: 0 };
-            // The preview's grid matches the printed page (see layout.ts).
-            const bandHeight = page.band ? space[0].height : 0;
-            const restHeight = columnHeight(i === 0, settings.paperSize) - bandHeight;
-            const rows = !page.band
-              ? "1fr"
-              : page.band.at === "top"
-              ? `${bandHeight}fr ${restHeight}fr`
-              : `${restHeight}fr ${bandHeight}fr`;
-            let j = page.band ? 1 : 0;
             return (
               <div key={i} className="sheet-wrap">
                 <div
-                  className="sheet"
+                  className={`sheet${selected?.type === "page" && selected.page === i ? " selected" : ""}`}
                   style={{
                     aspectRatio: `${parseFloat(size.width)} / ${parseFloat(size.height)}`,
                     fontFamily: fonts.body,
                   }}
+                  onClick={() => setSelected({ type: "page", page: i })}
                 >
                   {i === 0 && (
                     <div className="sheet-masthead" style={{ fontFamily: fonts.masthead }}>
@@ -411,286 +353,179 @@ export function PageBuilder({
                     </div>
                   )}
                   <div
-                    className="sheet-columns"
+                    className="sheet-spots"
                     style={{
-                      gridTemplate: `${rows} / repeat(${page.columns}, 1fr)${
-                        page.columns < MAX_COLUMNS ? " auto" : ""
-                      }`,
+                      gridTemplateAreas: areas.map((row) => `"${row}"`).join(" "),
+                      gridTemplateRows: rows.map((r) => `${r}fr`).join(" "),
                     }}
                   >
-                    {page.band && (
-                      <div className="sheet-stack" style={{ gridColumn: places.band.column, gridRow: places.band.row }}>
-                        {page.band.item
-                          ? block(page.band.item, bandSpot, 1, space[0])
-                          : addButton(bandSpot, "+ Band section", true)}
-                      </div>
-                    )}
-                    {page.stacks.map((stack, k) => (
-                      <div
-                        key={k}
-                        className="sheet-stack"
-                        style={{ gridColumn: places.column(k).column, gridRow: places.column(k).row }}
-                      >
-                        {stack.map((item, n) => {
-                          const inches = space[j++];
-                          return block(item, { page: i, column: k, index: n }, inches.height, inches);
-                        })}
-                        {stack.length < MAX_STACK &&
-                          addButton(
-                            { page: i, column: k, index: stack.length },
-                            stack.length ? "+" : "+ Add section",
-                            !stack.length,
+                    {page.slots.map((section, j) => {
+                      const spot = { page: i, slot: j };
+                      // While dragging, the spots where the section fits light up and the others dim.
+                      const fit =
+                        dragged && !same(dragged.from, spot) ? canDrop(spot, dragged.section, dragged.from) : null;
+                      const grower = !section && takenBy(page, j);
+                      return (
+                        <div
+                          key={j}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Page ${i + 1}: ${section?.title ?? "empty spot"}`}
+                          className={[
+                            "sheet-spot",
+                            !section && "empty",
+                            fit === true && "fits",
+                            fit === false && "no-fit",
+                            fit && same(over as Spot, spot) && "over",
+                            selected?.type === "spot" && same(selected, spot) && "selected",
+                            same(dragged?.from, spot) && "lifted",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          style={{ gridArea: spotLetter(j) }}
+                          draggable={!!section}
+                          onDragStart={() => section && setDragged({ section, from: spot })}
+                          onDragEnd={endDrag}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setOver(spot);
+                          }}
+                          onDragLeave={() => setOver(null)}
+                          onDrop={() => drop(spot)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // not the page
+                            setSelected({ type: "spot", ...spot });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelected({ type: "spot", ...spot });
+                            }
+                          }}
+                        >
+                          {!section ? (
+                            <span>{grower ? `${grower} grows here` : "+ Add"}</span>
+                          ) : (
+                            <>
+                              <span className="sheet-section">{section.title}</span>
+                              {section.kind ? (
+                                <FeaturePreview kind={section.kind} />
+                              ) : (
+                                <>
+                                  <span className="sheet-size">~{words(space[j]!)} words</span>
+                                  <span className="sheet-lines" />
+                                </>
+                              )}
+                            </>
                           )}
-                        {!stack.length && page.columns > 1 && (
-                          <button type="button" className="sheet-add" onClick={() => removeColumn(i, k)}>
-                            Remove column
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {page.columns < MAX_COLUMNS && (
-                      <button
-                        type="button"
-                        className="sheet-add add-column"
-                        style={{ gridRow: "1 / -1" }}
-                        onClick={() => addColumn(i)}
-                        aria-label={`Page ${i + 1}: add a column`}
-                      >
-                        + Add column
-                      </button>
-                    )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="sheet-controls">
-                  <span>Page {i + 1}</span>
-                  <label>
-                    Band{" "}
-                    <select value={page.band?.at ?? "none"} onChange={(e) => setBand(i, e.target.value as "none")}>
-                      <option value="none">None</option>
-                      <option value="top">Top</option>
-                      <option value="bottom">Bottom</option>
-                    </select>
-                  </label>
-                  {page.band && page.columns > 1 && (
-                    <label>
-                      Width{" "}
-                      <select value={page.band.rail} onChange={(e) => setRail(i, e.target.value as Rail)}>
-                        <option value="none">All columns</option>
-                        <option value="left">Leave a column on the left</option>
-                        <option value="right">Leave a column on the right</option>
-                      </select>
-                    </label>
-                  )}
-                  {i > 0 && (
-                    <span className="page-actions">
-                      <button
-                        type="button"
-                        className="link"
-                        onClick={() => movePage(i, -1)}
-                        disabled={i === 1}
-                        aria-label={`Move page ${i + 1} left`}
-                      >
-                        ←
-                      </button>
-                      <button
-                        type="button"
-                        className="link"
-                        onClick={() => movePage(i, 1)}
-                        disabled={i === pages.length - 1}
-                        aria-label={`Move page ${i + 1} right`}
-                      >
-                        →
-                      </button>
-                      <button type="button" className="link" onClick={() => change(pages.filter((_, n) => n !== i))}>
-                        Remove
-                      </button>
-                    </span>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  className="link sheet-label"
+                  onClick={() => setSelected({ type: "page", page: i })}
+                >
+                  Page {i + 1} · {LAYOUTS[page.layout].label}
+                </button>
               </div>
             );
           })}
           {pages.length < MAX_PAGES && (
-            <button
-              type="button"
-              className="add-page"
-              onClick={() => change([...pages, { columns: 1, band: null, stacks: [[]] }])}
-            >
+            <button type="button" className="add-page" onClick={() => setSelected({ type: "newPage" })}>
               + Add a page
             </button>
           )}
         </div>
+
+        <aside className="panel" aria-live="polite">
+          {panel()}
+        </aside>
       </div>
-
-      {form && (
-        <Dialog label={form.original ? `Edit ${form.original}` : "New section"} onClose={() => setForm(null)}>
-          <div
-            className="new-section"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault(); // don't submit the whole form
-                saveSection();
-              }
-            }}
-          >
-            <strong>{form.original ? `Edit ${form.original}` : "New section"}</strong>
-            <label>
-              Name
-              <input
-                autoFocus
-                placeholder="e.g. Gardening"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                disabled={isPreset(form.original)}
-                maxLength={40}
-              />
-              {nameTaken && <span className="muted">That name is taken.</span>}
-              {isPreset(form.original) && <span className="muted">Ready-made sections keep their name.</span>}
-            </label>
-            <label>
-              <span>
-                What it covers <span className="muted">(optional)</span>
-              </span>
-              <input
-                autoFocus={isPreset(form.original)}
-                placeholder="e.g. home gardening tips and local plant sales"
-                value={form.about}
-                onChange={(e) => setForm({ ...form, about: e.target.value })}
-                maxLength={300}
-              />
-            </label>
-            <label>
-              <span>
-                Preferred sources <span className="muted">(optional, separate with commas)</span>
-              </span>
-              <input
-                placeholder="e.g. Gardenista, The Guardian"
-                value={form.sources}
-                onChange={(e) => setForm({ ...form, sources: e.target.value })}
-              />
-            </label>
-            <span className="dialog-actions">
-              <button type="button" className="button" onClick={saveSection}>
-                {form.original ? "Save section" : "Add section"}
-              </button>
-              <button type="button" className="link" onClick={() => setForm(null)}>
-                Cancel
-              </button>
-            </span>
-          </div>
-        </Dialog>
-      )}
-
-      {adding && (
-        <Dialog label={`Add a section to page ${adding.page + 1}`} onClose={() => setAdding(null)}>
-          <strong>
-            Page {adding.page + 1}, {adding.column < 0 ? "band" : `column ${adding.column + 1}`}
-          </strong>
-          {!available.some((s) => fitsAt(s, adding)) && <p className="muted">No other section fits here.</p>}
-          {available
-            .filter((s) => fitsAt(s, adding))
-            .map((s, k) => (
-              <button
-                key={s.title}
-                type="button"
-                autoFocus={k === 0}
-                onClick={() => {
-                  move(adding, { section: s, length: "medium" });
-                  setAdding(null);
-                }}
-              >
-                {s.title}{" "}
-                <span className="muted">
-                  {s.about}
-                  {s.sources?.length ? ` · prefers ${s.sources.join(", ")}` : ""}
-                </span>
-              </button>
-            ))}
-          <button type="button" className="link" onClick={() => setAdding(null)}>
-            Cancel
-          </button>
-        </Dialog>
-      )}
-
-      {editing && editingItem && (
-        <Dialog label={editingItem.section.title} onClose={() => setEditing(null)}>
-          <strong>{editingItem.section.title}</strong>
-          {!editingItem.section.kind && (
-            <span className="lengths" role="group" aria-label="Length">
-              {Object.entries(LENGTHS).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="button"
-                  aria-pressed={editingItem.length === key}
-                  onClick={() => edit((next) => (itemAt(next, editing)!.length = key as Item["length"]))}
-                >
-                  {label}
-                </button>
-              ))}
-            </span>
-          )}
-          {editing.column >= 0 &&
-            moves(pages[editing.page], editing).map(({ label, to }) => (
-              <button
-                key={label}
-                type="button"
-                disabled={!canPut(editingItem.section, to, editing)}
-                onClick={() => {
-                  move(to, editingItem, editing);
-                  setEditing(null);
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          {!editingItem.section.kind && (
-            <button
-              type="button"
-              onClick={() => {
-                openForm(editingItem.section);
-                setEditing(null);
-              }}
-            >
-              Edit {editingItem.section.title}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              edit((next) => take(next, editing));
-              setEditing(null);
-            }}
-          >
-            Remove from the page
-          </button>
-          <button type="button" className="link" onClick={() => setEditing(null)}>
-            Done
-          </button>
-        </Dialog>
-      )}
     </>
   );
 }
 
-const isPreset = (title: string) => PRESET_SECTIONS.some((p) => p.title === title);
+// The section that grows into an empty spot in print, if any (see filledAreas).
+function takenBy(page: Page, slot: number) {
+  const cell = LAYOUTS[page.layout].areas.join(" ").split(" ").indexOf(spotLetter(slot));
+  const letter = filledAreas(page).flat()[cell];
+  return letter === spotLetter(slot) ? null : page.slots[letter.charCodeAt(0) - 97]?.title;
+}
 
-const itemAt = (pages: Draft[], { page, column, index }: Spot) =>
-  column < 0 ? pages[page].band?.item : pages[page].stacks[column][index];
+// The settings of a section of stories: its name (only for the reader's own sections), what it covers and its
+// preferred sources. `section` is null for a new one. `onSave` returns false if the name is taken.
+function SectionForm({ section, onSave }: { section: Section | null; onSave: (section: Section) => boolean }) {
+  const [title, setTitle] = useState(section?.title ?? "");
+  const [about, setAbout] = useState(section?.about ?? "");
+  const [sources, setSources] = useState(section?.sources?.join(", ") ?? "");
+  const [nameTaken, setNameTaken] = useState(false);
+  const preset = !!section && isPreset(section.title);
+  const changed =
+    title !== (section?.title ?? "") ||
+    about !== (section?.about ?? "") ||
+    sources !== (section?.sources?.join(", ") ?? "");
 
-// Where a section in a column can move with one click: up, down, or to the end of the next column.
-function moves(page: Draft, { page: i, column, index }: Spot) {
-  const options = [
-    index > 0 && { label: "Move up", to: { page: i, column, index: index - 1 } },
-    index < page.stacks[column].length - 1 && { label: "Move down", to: { page: i, column, index: index + 2 } },
-    column > 0 && {
-      label: "Move to the column on the left",
-      to: { page: i, column: column - 1, index: page.stacks[column - 1].length },
-    },
-    column < page.columns - 1 && {
-      label: "Move to the column on the right",
-      to: { page: i, column: column + 1, index: page.stacks[column + 1].length },
-    },
-  ];
-  return options.filter((o) => !!o);
+  const save = () => {
+    const name = title.trim();
+    if (!name) return;
+    const sourceList = sources
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setNameTaken(!onSave({ title: name, about: about.trim() || `news about ${name}`, sources: sourceList }));
+  };
+
+  return (
+    <div
+      className="section-form"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+          e.preventDefault(); // don't submit the whole form
+          save();
+        }
+      }}
+    >
+      <label>
+        Name
+        <input
+          autoFocus={!section}
+          placeholder="e.g. Gardening"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          disabled={preset}
+          maxLength={40}
+        />
+        {nameTaken && <span className="muted">That name is taken.</span>}
+        {preset && <span className="muted">Ready-made sections keep their name.</span>}
+      </label>
+      <label>
+        <span>
+          What it covers <span className="muted">(optional)</span>
+        </span>
+        <textarea
+          rows={3}
+          placeholder="e.g. home gardening tips and local plant sales"
+          value={about}
+          onChange={(e) => setAbout(e.target.value)}
+          maxLength={300}
+        />
+      </label>
+      <label>
+        <span>
+          Preferred sources <span className="muted">(optional, separate with commas)</span>
+        </span>
+        <input
+          placeholder="e.g. Gardenista, The Guardian"
+          value={sources}
+          onChange={(e) => setSources(e.target.value)}
+        />
+      </label>
+      <button type="button" className="button" onClick={save} disabled={!title.trim() || (!!section && !changed)}>
+        {section ? "Save changes" : "Add section"}
+      </button>
+    </div>
+  );
 }

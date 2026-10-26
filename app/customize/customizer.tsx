@@ -14,7 +14,6 @@ import {
   TEMPERATURES,
   TONES,
   TYPEFACES,
-  type Draft,
   type Settings,
 } from "@/lib/settings";
 
@@ -37,7 +36,7 @@ export function Customizer({
 }) {
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
-  const [pages, setPages] = useState<Draft[]>(initial.pages);
+  const [pages, setPages] = useState(initial.pages);
   const [trusted, setTrusted] = useState(initial.trustedSources.join("\n"));
   const [blocked, setBlocked] = useState(initial.blockedSources.join("\n"));
   const [tab, setTab] = useState(TABS[0]);
@@ -49,8 +48,8 @@ export function Customizer({
   const unsaved = json !== savedJson;
 
   // Why the paper can't be saved yet, if anything is missing.
-  const problem = !pages.every((p) => p.stacks.every((s) => s.length) && (!p.band || p.band.item))
-    ? "Every column and band needs a section."
+  const problem = !pages.every((p) => p.slots.some(Boolean))
+    ? "Every page needs at least one section."
     : !settings.name.trim()
     ? "Add a paper name in Paper & style."
     : !settings.location.trim()

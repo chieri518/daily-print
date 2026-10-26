@@ -24,7 +24,7 @@ async function shrinkToFit() {
   await document.fonts.ready;
   const overflowing: number[] = [];
   document.querySelectorAll<HTMLElement>(".content").forEach((content, i) => {
-    const sections = [...content.querySelectorAll<HTMLElement>(".section, .stack")];
+    const sections = [...content.querySelectorAll<HTMLElement>(".section")];
     const tooTall = () => sections.some((s) => s.scrollHeight > s.clientHeight);
     for (let size = 9.75; tooTall() && size >= 7.5; size -= 0.25) content.style.fontSize = `${size}pt`;
     if (tooTall()) overflowing.push(i + 1);
@@ -32,16 +32,14 @@ async function shrinkToFit() {
   return overflowing;
 }
 
-// Runs in the browser: puts each filler (quote, fun fact, on this day) at the bottom of the first column (or band) with
-// room for it, where nothing on the page overflows. Fillers that fit nowhere are left out.
+// Runs in the browser: puts each filler (quote, fun fact, on this day) at the bottom of the first section with room for
+// it. Fillers that fit nowhere are left out.
 function placeFillers() {
-  const fits = (page: Element) =>
-    [...page.querySelectorAll<HTMLElement>(".section, .stack, .band")].every((e) => e.scrollHeight <= e.clientHeight);
-  const sections = [...document.querySelectorAll<HTMLElement>(".stack > .section:last-child, .band > .section")];
+  const sections = [...document.querySelectorAll<HTMLElement>(".page .section")];
   for (const filler of document.querySelectorAll<HTMLElement>(".fillers .filler")) {
     for (const section of sections) {
       section.append(filler);
-      if (fits(section.closest(".page")!)) break;
+      if (section.scrollHeight <= section.clientHeight) break;
       filler.remove();
     }
   }
