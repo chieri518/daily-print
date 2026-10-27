@@ -17,7 +17,7 @@ import {
   type Page,
   type Section,
 } from "@/lib/settings";
-import { filledAreas, measure, spotLetter, words } from "@/lib/space";
+import { filledAreas, gridAreas, measure, spotIndex, spotLetter, words } from "@/lib/space";
 
 // The pages every new reader starts with.
 const DEFAULT_PAGES = Settings.parse(defaults).pages;
@@ -162,7 +162,7 @@ export function PageBuilder({
 
   // The side panel, for whatever is selected.
   const panel = () => {
-    if (!selected) return <p className="muted">Click a section, an empty spot or a page to see its settings here.</p>;
+    if (!selected) return <p className="muted">Click a section or a page to see its settings here.</p>;
 
     if (selected.type === "newPage" || selected.type === "page") {
       const page = selected.type === "page" ? selected.page : -1;
@@ -220,27 +220,6 @@ export function PageBuilder({
         </>
       );
 
-    if (selected.type === "spot" && !pages[selected.page].slots[selected.slot]) {
-      const fitting = available.filter((s) => fitsAt(s, selected));
-      const grower = takenBy(pages[selected.page], selected.slot);
-      return (
-        <>
-          <strong>Empty spot on page {selected.page + 1}</strong>
-          <span className="muted">
-            {grower ? `${grower} grows into it in print. Or add a section:` : "Add a section here:"}
-          </span>
-          {fitting.map((s) => (
-            <button key={s.title} type="button" className="panel-choice" onClick={() => place(selected, s)}>
-              {s.title} <span className="muted">{s.about}</span>
-            </button>
-          ))}
-          {fitting.length < available.length && (
-            <span className="muted">Puzzles and extras that need a bigger spot aren't listed.</span>
-          )}
-        </>
-      );
-    }
-
     // A section: in a spot, or in the list.
     const spot = selected.type === "spot" ? selected : null;
     const section = spot
@@ -265,7 +244,7 @@ export function PageBuilder({
           </button>
         ) : (
           <>
-            <span className="muted">Drag it onto a page, or click an empty spot.</span>
+            <span className="muted">Drag it onto a page.</span>
             {!isPreset(section.title) && (
               <button
                 type="button"
@@ -369,7 +348,7 @@ export function PageBuilder({
                   <div
                     className="sheet-spots"
                     style={{
-                      gridTemplateAreas: areas.map((row) => `"${row}"`).join(" "),
+                      gridTemplateAreas: gridAreas(areas),
                       gridTemplateRows: rows.map((r) => `${r}fr`).join(" "),
                     }}
                   >
@@ -402,23 +381,23 @@ export function PageBuilder({
                           onDragEnd={endDrag}
                           onDragOver={(e) => {
                             e.preventDefault();
-                            setOver(spot);
+                            if (!same(over as Spot, spot)) setOver(spot); // fires constantly: re-render only on a new spot
                           }}
                           onDragLeave={() => setOver(null)}
                           onDrop={() => drop(spot)}
                           onClick={(e) => {
                             e.stopPropagation(); // not the page
-                            setSelected({ type: "spot", ...spot });
+                            setSelected(section ? { type: "spot", ...spot } : null);
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
+                            if (section && (e.key === "Enter" || e.key === " ")) {
                               e.preventDefault();
                               setSelected({ type: "spot", ...spot });
                             }
                           }}
                         >
                           {!section ? (
-                            <span>{grower ? `${grower} grows here` : "+ Add"}</span>
+                            <span>{grower ? `${grower} grows here` : "Drag a section here"}</span>
                           ) : (
                             <>
                               <span className="sheet-section">{section.title}</span>
@@ -466,7 +445,7 @@ export function PageBuilder({
 function takenBy(page: Page, slot: number) {
   const cell = LAYOUTS[page.layout].areas.join(" ").split(" ").indexOf(spotLetter(slot));
   const letter = filledAreas(page).flat()[cell];
-  return letter === spotLetter(slot) ? null : page.slots[letter.charCodeAt(0) - 97]?.title;
+  return letter === spotLetter(slot) ? null : page.slots[spotIndex(letter)]?.title;
 }
 
 // The settings of a section of stories: its name (only for the reader's own sections), what it covers and its

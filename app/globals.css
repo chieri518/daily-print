@@ -73,8 +73,6 @@ label .muted { font-weight: normal; font-size: 0.8rem; }
 /* The side panel */
 .panel { gap: 0.6rem; align-content: start; padding: 0.9rem; border: 1px solid var(--rule); }
 .panel .muted { font-size: 0.8rem; line-height: 1.35; }
-.panel-choice { display: grid; text-align: left; padding: 0.35rem 0.5rem; border: 1px solid var(--rule); background: none; color: inherit; }
-.panel-choice:hover, .panel-choice:focus-visible { border-color: var(--ink); }
 .panel-actions { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; }
 .section-form { display: grid; gap: 0.6rem; }
 .section-form .button { justify-self: start; }

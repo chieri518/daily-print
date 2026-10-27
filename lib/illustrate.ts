@@ -77,10 +77,10 @@ async function draw(prompt: string, shape: Shape): Promise<string | null> {
   return null;
 }
 
-// Returns the image as a data URL, ready for an <img>.
 // OpenAI's sizes for each shape.
 const OPENAI_SIZES = { wide: "1536x512", tall: "768x1536", square: "1024x1024" };
 
+// Returns the image as a data URL, ready for an <img>.
 async function openai(prompt: string, shape: Shape) {
   const response = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",

@@ -7,8 +7,7 @@
    - [ ] Deploy, then add the Vercel URL in Supabase (Authentication → URL Configuration) and in Google Cloud (OAuth origins and redirect URIs)
 2. [ ] **Check the first deployed edition:** the PDF renders on Vercel (`@sparticuz/chromium` is untried there), the fonts are right, each step finishes within Vercel's time limit, and what it cost on the API
 3. [ ] **Point the printer box at Vercel:** in the deployed app, make a new printer key and run its command on the Pi
-4. [ ] **Turn off new sign-ups** in Supabase (Authentication → Sign In / Providers), so strangers can't sign in
-5. [ ] Watch the first few mornings
+4. [ ] Watch the first few mornings
 
 ## Next: ready-made layouts
 
@@ -16,19 +15,9 @@ Replaces free columns (see DECISIONS.md, Customize page).
 
 - [ ] Make a real edition and check on paper: gaps, word counts, fillers, the vertical comic
 
-## Fixes from the code review
-
-Bugs:
+## From the code review
 
 - [ ] Not a bug today: a feature's fit is only checked when it's placed, but no feature fits on one paper size and not the other. Check again after tuning the sizes in `FEATURES` (see Soon), since saved pages could then hold a feature that no longer fits
-
-Cleanup:
-
-- [ ] Build the grid-template-areas string in one helper (now in `page-builder.tsx`, `parts.tsx` and `layout.ts`)
-- [ ] `measure()` repeats the cell lookup from `filledAreas`; the spot letter → index conversion is written out twice
-- [ ] `illustratedSpot`: decide "two columns wide" by counting tracks (4 or more), not page-width arithmetic with a 0.1in fudge
-- [ ] Dragging re-renders the whole builder on every `dragover`: only update when the spot under the cursor changes
-- [ ] `illustrate.ts`: move the `openai()` comment back above its function (it now sits above `OPENAI_SIZES`)
 
 ## Soon: quality
 

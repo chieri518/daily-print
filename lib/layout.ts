@@ -12,7 +12,7 @@ import {
   type Feature,
   type Settings,
 } from "./settings.ts";
-import { filledAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
+import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
 import { todayLine, weatherHtml } from "./weather.ts";
 
 // Builds the newspaper as one HTML document, one <section> per printed page.
@@ -85,9 +85,7 @@ export function layout(
         ${content}
       </div>`;
     });
-    const areas = filledAreas(page)
-      .map((row) => `"${row.join(" ")}"`)
-      .join(" ");
+    const areas = gridAreas(filledAreas(page));
     const rows = LAYOUTS[page.layout].rows.map((r) => `minmax(0, ${r}fr)`).join(" ");
     return `${
       i === 0 ? masthead : ""

@@ -18,12 +18,20 @@ type Spots = Pick<Page, "layout"> & { slots: unknown[] };
 
 const inches = (size: string) => parseFloat(size) / (size.endsWith("mm") ? 25.4 : 1);
 export const spotLetter = (slot: number) => String.fromCharCode(97 + slot); // spot 0 is "a"
+export const spotIndex = (letter: string) => letter.charCodeAt(0) - 97;
+
+// A grid of spot letters as CSS grid-template-areas, from rows like "a a b" or ["a", "a", "b"].
+export const gridAreas = (rows: (string | string[])[]) =>
+  rows.map((row) => `"${typeof row === "string" ? row : row.join(" ")}"`).join(" ");
+
+// The [row, track] cells of a spot in a grid of spot letters.
+const cells = (grid: string[][], spot: string) =>
+  grid.flatMap((row, r) => row.flatMap((x, c) => (x === spot ? [[r, c]] : [])));
 
 // The layout's grid of spot letters, row by row, after each empty spot is taken over by a section next to it: above,
 // to the left, below or to the right, the first that keeps both together a rectangle. Otherwise it stays empty.
 export function filledAreas(page: Spots) {
   const grid = LAYOUTS[page.layout].areas.map((row) => row.split(" "));
-  const cells = (spot: string) => grid.flatMap((row, r) => row.flatMap((x, c) => (x === spot ? [[r, c]] : [])));
   const isRectangle = (all: number[][]) => {
     const rows = all.map(([r]) => r);
     const cols = all.map(([, c]) => c);
@@ -32,11 +40,11 @@ export function filledAreas(page: Spots) {
   page.slots.forEach((section, slot) => {
     if (section) return;
     const empty = spotLetter(slot);
-    const own = cells(empty);
+    const own = cells(grid, empty);
     const [[top, left]] = own;
     const [[bottom, right]] = own.slice(-1);
     const neighbours = [grid[top - 1]?.[left], grid[top][left - 1], grid[bottom + 1]?.[left], grid[top][right + 1]];
-    const taker = neighbours.find((n) => n && page.slots[n.charCodeAt(0) - 97] && isRectangle([...own, ...cells(n)]));
+    const taker = neighbours.find((n) => n && page.slots[spotIndex(n)] && isRectangle([...own, ...cells(grid, n)]));
     if (taker) for (const [r, c] of own) grid[r][c] = taker;
   });
   return grid;
@@ -51,7 +59,7 @@ export function measure(page: Spots, front: boolean, paperSize: Settings["paperS
   const track = (width - (TRACKS - 1) * COLUMN_GAP) / TRACKS;
   const fr = (height - (rows.length - 1) * ROW_GAP) / rows.reduce((a, b) => a + b, 0);
   return page.slots.map((_, slot): Size | null => {
-    const at = grid.flatMap((row, r) => row.flatMap((x, c) => (x === spotLetter(slot) ? [[r, c]] : [])));
+    const at = cells(grid, spotLetter(slot));
     if (!at.length) return null;
     const spanRows = [...new Set(at.map(([r]) => r))];
     const spanTracks = new Set(at.map(([, c]) => c)).size;
@@ -72,10 +80,11 @@ export const pictureWords = (width: number) => Math.round((width * (width / 3) *
 // How many text columns a story uses in a spot this wide: about one per 2.3 inches.
 export const textColumns = (width: number) => Math.max(1, Math.floor(width / 2.3));
 
-// The front page's illustrated spot: the first spot of stories at least two columns of the page wide, or -1 for none.
+// The front page's illustrated spot: the first spot of stories at least two columns of the page (4 tracks) wide, or -1
+// for none.
 export function illustratedSpot(settings: Settings) {
   const page = settings.pages[0];
-  const sizes = measure(page, true, settings.paperSize);
-  const twoColumns = 4 * ((inches(PAPER_SIZES[settings.paperSize].width) - 2 * MARGIN) / TRACKS) - 0.1;
-  return page.slots.findIndex((s, j) => s && !s.kind && sizes[j]!.width >= twoColumns);
+  const grid = filledAreas(page);
+  const tracks = (slot: number) => new Set(cells(grid, spotLetter(slot)).map(([, c]) => c)).size;
+  return page.slots.findIndex((s, j) => s && !s.kind && tracks(j) >= 4);
 }

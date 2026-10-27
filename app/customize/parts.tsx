@@ -2,7 +2,7 @@
 
 // Small pieces of the Customize page.
 import { LAYOUTS, spotCount, type Feature, type Layout } from "@/lib/settings";
-import { spotLetter } from "@/lib/space";
+import { gridAreas, spotLetter } from "@/lib/space";
 
 // A tiny drawing of a layout's spots.
 export function LayoutThumb({ layout }: { layout: Layout }) {
@@ -11,7 +11,7 @@ export function LayoutThumb({ layout }: { layout: Layout }) {
     <span
       className="layout-thumb"
       style={{
-        gridTemplateAreas: areas.map((row) => `"${row}"`).join(" "),
+        gridTemplateAreas: gridAreas(areas),
         gridTemplateRows: rows.map((r) => `${r}fr`).join(" "),
       }}
       aria-hidden
