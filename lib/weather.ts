@@ -1,5 +1,4 @@
 // The five-day forecast, today's almanac (sun, moon) and air quality, from Open-Meteo (free, no key): https://open-meteo.com
-import { esc } from "./html.ts";
 
 export type Forecast = {
   place: string;
@@ -107,7 +106,7 @@ function moonPhase(date: Date) {
 }
 
 // What the air quality number means, in the US index's own words.
-function airLabel(aqi: number) {
+export function airLabel(aqi: number) {
   if (aqi <= 50) return "Good";
   if (aqi <= 100) return "Moderate";
   if (aqi <= 150) return "Unhealthy for sensitive groups";
@@ -133,34 +132,10 @@ export function todayLine(f: Forecast) {
   return `${condition(d.code).label}, ${d.high}${f.unit} / ${d.low}${f.unit}`;
 }
 
-// The forecast as printed: one column per day with an icon, today's almanac line, then the tip.
-export function weatherHtml(f: Forecast | null, tip: string) {
-  if (!f) return `<p class="weather-tip">The forecast wasn't available today.</p>`;
-  const days = f.days.map((d, i) => {
-    const { label, icon } = condition(d.code);
-    const name = i === 0 ? "Today" : new Date(`${d.date}T12:00`).toLocaleDateString("en-US", { weekday: "short" });
-    return `<div class="day">
-      <strong>${name}</strong>
-      ${ICONS[icon]}
-      <span class="condition">${label}</span>
-      <span class="temps"><b>${d.high}°</b> / ${d.low}°</span>
-      <span class="small">Rain ${d.rain}% · Wind ${d.wind} ${f.windUnit}</span>
-    </div>`;
-  });
-  const almanac = [
-    `Sunrise ${f.sunrise}`,
-    `Sunset ${f.sunset}`,
-    `Daylight ${f.daylight}`,
-    f.moon,
-    f.airQuality !== null && `Air quality ${f.airQuality}, ${airLabel(f.airQuality).toLowerCase()}`,
-  ].filter(Boolean);
-  return `<div class="weather"><div class="days">${days.join("")}</div>
-    <p class="almanac">${almanac.join(" · ")}</p>
-    <p class="weather-tip">${esc(tip)}</p></div>`;
-}
-
 // WMO weather codes, grouped into the conditions we draw.
-function condition(code: number): { label: string; icon: keyof typeof ICONS } {
+export type Icon = "sun" | "partly" | "cloud" | "fog" | "rain" | "snow" | "storm";
+
+export function condition(code: number): { label: string; icon: Icon } {
   if (code === 0) return { label: "Sunny", icon: "sun" };
   if (code <= 2) return { label: "Partly cloudy", icon: "partly" };
   if (code === 3) return { label: "Cloudy", icon: "cloud" };
@@ -169,32 +144,3 @@ function condition(code: number): { label: string; icon: keyof typeof ICONS } {
   if (code <= 86) return { label: "Snow", icon: "snow" };
   return { label: "Storms", icon: "storm" };
 }
-
-// Black-and-white line icons for print.
-const cloud = `<path d="M14 34h22a8 8 0 0 0 0-16 11 11 0 0 0-21-2 9 9 0 0 0-1 18z" fill="#fff" stroke="#000" stroke-width="2"/>`;
-const sun = (x: number, y: number, r: number) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#000" stroke-width="2"/>` +
-  [0, 45, 90, 135, 180, 225, 270, 315]
-    .map((a) => {
-      const c = Math.cos((a * Math.PI) / 180),
-        s = Math.sin((a * Math.PI) / 180);
-      return `<line x1="${x + c * (r + 3)}" y1="${y + s * (r + 3)}" x2="${x + c * (r + 7)}" y2="${
-        y + s * (r + 7)
-      }" stroke="#000" stroke-width="2"/>`;
-    })
-    .join("");
-const drops = (d: string) => `<path d="${d}" stroke="#000" stroke-width="2" fill="none"/>`;
-const svg = (body: string) => `<svg class="icon" viewBox="0 0 48 48">${body}</svg>`;
-
-const ICONS = {
-  sun: svg(sun(24, 24, 9)),
-  partly: svg(sun(30, 16, 7) + cloud),
-  cloud: svg(cloud),
-  fog: svg(cloud + drops("M10 40h28M14 45h20")),
-  rain: svg(cloud + drops("M17 38l-2 6M25 38l-2 6M33 38l-2 6")),
-  snow: svg(
-    cloud +
-      `<g font-size="8" text-anchor="middle"><text x="16" y="45">*</text><text x="25" y="45">*</text><text x="34" y="45">*</text></g>`,
-  ),
-  storm: svg(cloud + `<path d="M26 34l-5 7h5l-3 6" stroke="#000" stroke-width="2" fill="none"/>`),
-};

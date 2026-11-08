@@ -2,8 +2,8 @@ import { FatalError, sleep } from "workflow";
 import { assemble, research, write, type Edition, type Paper } from "../lib/editor.ts";
 import { birthdays } from "../lib/google.ts";
 import { drawPictures } from "../lib/illustrate.ts";
-import { layout } from "../lib/layout.ts";
 import { step } from "../lib/log.ts";
+import type { Layout } from "../lib/paper.tsx";
 import type { Puzzles } from "../lib/puzzles.ts";
 import { renderPdf } from "../lib/render.ts";
 import { settingsFor, type Settings } from "../lib/settings.ts";
@@ -131,16 +131,29 @@ type Parts = {
 async function printStep(id: string, userId: string, settings: Settings, date: string, parts: Parts, costUsd: number) {
   "use step";
   const paper = assemble(parts.edition, parts.forecast, id, parts.names);
-  const { pdf, overflowing } = await step("Printing the PDF", () =>
-    renderPdf(layout(settings, date, paper, parts.images, parts.yesterday)),
-  );
+  const layout: Layout = { settings, date, yesterday: parts.yesterday, pictures: parts.images, fit: null };
+  const { pdf, fit, overflowing } = await step("Printing the PDF", () => renderPdf(paper, layout));
   if (overflowing.length) console.warn(`Edition ${id}: text is cut off on page ${overflowing.join(", ")}.`);
-  const db = admin();
-  const upload = await db.storage
-    .from("editions")
-    .upload(`${userId}/${id}.pdf`, pdf, { contentType: "application/pdf", upsert: true });
-  if (upload.error) throw upload.error;
-  await save(id, { status: "ready", content: paper, cost_usd: costUsd });
+  // The PDF for printing. The Paper page draws the edition again from its text and layout, with the pictures from storage.
+  await upload(`${userId}/${id}.pdf`, pdf, "application/pdf");
+  const pictures = {
+    illustration: await uploadPicture(`${userId}/${id}-illustration`, parts.images.illustration),
+    comic: await uploadPicture(`${userId}/${id}-comic`, parts.images.comic),
+  };
+  await save(id, { status: "ready", content: paper, layout: { ...layout, pictures, fit }, cost_usd: costUsd });
+}
+
+// Saves a picture drawn as a data URL, and returns its path in storage.
+async function uploadPicture(path: string, dataUrl: string | null) {
+  const [, type, base64] = dataUrl?.match(/^data:(.+);base64,(.*)$/) ?? [];
+  if (!type || !base64) return null;
+  await upload(path, Buffer.from(base64, "base64"), type);
+  return path;
+}
+
+async function upload(path: string, body: Uint8Array, contentType: string) {
+  const { error } = await admin().storage.from("editions").upload(path, body, { contentType, upsert: true });
+  if (error) throw error;
 }
 
 async function failStep(id: string, error: string) {

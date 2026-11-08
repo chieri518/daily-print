@@ -21,14 +21,19 @@ a { color: inherit; }
 h1, h2 { font-family: var(--headline), Georgia, serif; line-height: 1.15; }
 .muted { color: var(--muted); }
 
-.masthead { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; text-align: center; border-bottom: 3px double var(--rule); }
-.masthead > a { font-family: var(--masthead), serif; font-size: 3.2rem; text-decoration: none; }
-.masthead nav { display: flex; justify-content: center; gap: 1.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.site-header { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; text-align: center; border-bottom: 3px double var(--rule); }
+.site-header > a { font-family: var(--masthead), serif; font-size: 3.2rem; text-decoration: none; }
+.site-header nav { display: flex; justify-content: center; gap: 1.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
 button { font: inherit; cursor: pointer; }
 .button { background: var(--ink); color: var(--paper); border: 0; padding: 0.6rem 1.2rem; font-weight: 600; }
 .button:disabled { opacity: 0.5; cursor: wait; }
 .link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; text-transform: inherit; letter-spacing: inherit; }
+
+/* The Paper page */
+.paper-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; align-items: center; gap: 1.25rem; padding: 0.5rem 0; background: var(--paper); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.paper-bar button { font-size: 1.6rem; line-height: 1; text-decoration: none; }
+.paper-bar a { position: absolute; right: 0; }
 
 .editions { list-style: none; padding: 0; }
 .editions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }

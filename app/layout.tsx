@@ -19,11 +19,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${masthead.variable} ${headline.variable} ${body.variable}`}>
       <body>
-        <header className="masthead">
+        <header className="site-header">
           <Link href="/">Daily Print</Link>
           {reader && (
             <nav>
-              <Link href="/">Editions</Link>
+              <Link href="/">Paper</Link>
+              <Link href="/editions">Editions</Link>
               <Link href="/customize">Customize</Link>
               <form action={signOut}>
                 <button className="link">Sign out</button>

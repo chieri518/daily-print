@@ -4,7 +4,6 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { useClaudeCode } from "../lib/claude.ts";
 import { assemble, research, write } from "../lib/editor.ts";
 import { drawPictures } from "../lib/illustrate.ts";
-import { layout } from "../lib/layout.ts";
 import { step } from "../lib/log.ts";
 import { renderPdf } from "../lib/render.ts";
 import { Settings } from "../lib/settings.ts";
@@ -43,7 +42,7 @@ const previous = readdirSync("editions")
 const yesterday = previous ? JSON.parse(readFileSync(`editions/${previous}`, "utf8")).paper?.puzzles ?? null : null;
 
 const { pdf, overflowing } = await step("Printing the PDF", () =>
-  renderPdf(layout(settings, date, paper, images, yesterday)),
+  renderPdf(paper, { settings, date, yesterday, pictures: images, fit: null }),
 );
 writeFileSync(`${file}.pdf`, pdf);
 

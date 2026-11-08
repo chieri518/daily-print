@@ -1,18 +1,18 @@
 # daily-print
 
-An AI agent that puts together a personal daily **newspaper**, not a news feed. Each edition is a printable, page-by-page PDF built around one reader's interests, location and preferences.
+An AI agent that puts together a personal daily **newspaper**, not a news feed. Each edition is built around one reader's interests, location and preferences. Read it in the browser, or print it.
 
 **What sets it apart: customization.** Every reader gets their own "just for you" paper: their topics, their sections, their name on the masthead.
 
 Why a newspaper and not a news app:
 - **It ends.** An edition has a fixed number of pages, unlike an endless feed.
 - **It has layout.** Masthead, columns, headlines and sections, like print.
-- **It can be printed.** The PDF looks right on paper, not only on a screen.
+- **It reads on screen and on paper.** The web page and the PDF are the same pages, line for line.
 - **It is edited.** The agent decides what makes the front page and what gets cut.
 
 ## Status
 
-Built: a web app where readers sign in with Google, design their paper on the Customize page, and get editions as PDFs, made on demand or every morning for a printer box at home. Next: deploying it so the paper prints by itself every morning. See [docs/TODO.md](docs/TODO.md).
+Built: a web app where readers sign in with Google, design their paper on the Customize page, and read each edition on the Paper page, turning pages left and right, or as a PDF. Editions are made on demand, or every morning for a printer box at home. Next: deploying it so the paper prints by itself every morning, and features on the web view: following a story, and explaining terms. See [docs/TODO.md](docs/TODO.md).
 
 ## Set up
 
@@ -52,20 +52,21 @@ When that works, deploy to Vercel with the API key, so the paper is made while y
 
 | File | What it does |
 |---|---|
-| [app/](app/) | Web pages: the landing page, the Editions page, PDF links and sign-in |
+| [app/](app/) | Web pages: the landing page, the Paper page (the latest edition, page by page), the Editions page, PDF links and sign-in |
 | [app/customize/](app/customize/) | The Customize page: tabs and save bar (`customizer.tsx`), the page builder (`page-builder.tsx`) and printing (`printing.tsx`) |
 | [app/actions.ts](app/actions.ts) | Server actions: sign in and out, save settings, start or stop an edition, connect Google, make a printer key |
 | [app/api/](app/api/) | The daily scheduler (`cron`), the printer box's API (`printer`) and the Google Calendar connection (`google`) |
-| [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, draw, print the PDF and save it |
+| [workflows/edition.ts](workflows/edition.ts) | The edition workflow: research, write, draw, print the PDF, and save it with its layout and pictures |
 | [lib/settings.ts](lib/settings.ts) | Everything a reader can choose (typefaces, layouts, sections) and the rules for valid settings |
 | [lib/editor.ts](lib/editor.ts), [lib/claude.ts](lib/claude.ts) | The editor's research and writing, and the calls to Claude with their cost |
 | [lib/space.ts](lib/space.ts) | How big each spot of a layout is in print, and so how many words fit |
-| [lib/layout.ts](lib/layout.ts), [lib/paper-css.ts](lib/paper-css.ts), [lib/render.ts](lib/render.ts) | The newspaper layout, and printing it to PDF with headless Chromium (shrinking text that's too long, and placing fillers) |
+| [lib/paper.tsx](lib/paper.tsx), [lib/paper-features.tsx](lib/paper-features.tsx), [lib/paper-css.ts](lib/paper-css.ts) | The newspaper as React components and their stylesheet, drawn the same on the Paper page and in the PDF |
+| [lib/render.ts](lib/render.ts) | Prints the PDF with headless Chromium: measures the fit (text shrunk to fit, fillers placed), which is saved so the Paper page matches |
 | [lib/weather.ts](lib/weather.ts), [lib/puzzles.ts](lib/puzzles.ts), [lib/illustrate.ts](lib/illustrate.ts), [lib/google.ts](lib/google.ts) | The forecast, puzzles, pictures and birthdays |
 | [lib/schedule.ts](lib/schedule.ts), [lib/printer.ts](lib/printer.ts), [lib/allowed.ts](lib/allowed.ts) | Scheduling morning papers, printer keys, and who can get editions |
 | [public/printer/](public/printer/) | The printer box's install and print scripts |
 | [scripts/paper.ts](scripts/paper.ts) | `npm run paper`: makes an edition from paper.json without the web app |
-| [supabase/migrations/](supabase/migrations/) | Database tables, security rules and the PDF bucket |
+| [supabase/migrations/](supabase/migrations/) | Database tables, security rules and the bucket for PDFs and pictures |
 
 ## Docs
 

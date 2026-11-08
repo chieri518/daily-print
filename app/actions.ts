@@ -60,7 +60,7 @@ export async function generate(form: FormData) {
     .single();
   if (error) throw error;
   await start(makeEdition, [data.id, reader.id, settings, date, day]);
-  revalidatePath("/");
+  revalidatePath("/", "layout"); // the Paper and Editions pages
 }
 
 // Stops an edition that's scheduled or being written. The workflow sees the new status before its next step and quits.
@@ -75,7 +75,7 @@ export async function stopEdition(id: string) {
     .eq("id", id)
     .in("status", ["scheduled", "writing"]);
   if (stopped.error) throw stopped.error;
-  revalidatePath("/");
+  revalidatePath("/", "layout"); // the Paper and Editions pages
 }
 
 // Stops reading birthdays from the reader's Google Calendar, and tells Google to cancel the access.

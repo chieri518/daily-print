@@ -7,7 +7,7 @@ How Daily Print works today, and what's planned. Decisions behind it are in [DEC
 ```mermaid
 flowchart LR
   subgraph You["Reader"]
-    BROWSER["Browser<br/>landing · Customize · Editions"]
+    BROWSER["Browser<br/>landing · Paper · Editions · Customize"]
     BOX["Printer box<br/>Raspberry Pi + printer"]
   end
 
@@ -21,7 +21,7 @@ flowchart LR
   subgraph Supabase
     AUTH["Auth<br/>Google sign-in"]
     DB[("Database<br/>papers · editions · printers · google_connections")]
-    FILES[("Storage<br/>edition PDFs")]
+    FILES[("Storage<br/>edition PDFs and pictures")]
   end
 
   subgraph Outside["Outside services"]
@@ -37,9 +37,9 @@ flowchart LR
   PAGES -- "Generate starts" --> WF
   PAGES -- "saving a print time schedules" --> WF
   CRON -- "schedules each reader's next paper" --> WF
-  PAGES -- "PDF link" --> FILES
+  PAGES -- "pictures, PDF link" --> FILES
   WF -- "reads status, saves the edition" --> DB
-  WF -- "saves the PDF" --> FILES
+  WF -- "saves the PDF and pictures" --> FILES
   WF --> CLAUDE & IMG & METEO & GCAL
   BOX -- "every 2 minutes: anything to print?" --> PAPI
   PAPI --> DB
@@ -70,6 +70,8 @@ flowchart LR
 ```
 
 Before each costly step, the workflow checks that the edition is still **writing**. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with the error.
+
+The paper is drawn by React components ([lib/paper.tsx](../lib/paper.tsx)) with one stylesheet ([lib/paper-css.ts](../lib/paper-css.ts), scoped to `.paper`). The print step draws them in Chromium and measures the **fit**: each page's font size after shrinking to fit, which section each filler went into, and the comic's height. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
 
 ```mermaid
 stateDiagram-v2

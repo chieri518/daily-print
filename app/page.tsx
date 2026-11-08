@@ -1,71 +1,70 @@
-import { GenerateButton, RefreshWhileWriting } from "./client";
-import { stopEdition } from "./actions";
+import { GenerateButton, PageTurner, RefreshWhileWriting } from "./client";
 import { Landing } from "./landing";
 import { canGenerate } from "@/lib/allowed";
-import { PRINT_WINDOW_MS } from "@/lib/printer";
-import { getReader, loadSettings } from "@/lib/supabase/server";
+import type { Paper as Edition } from "@/lib/editor";
+import { Newspaper, type Layout } from "@/lib/paper";
+import { css } from "@/lib/paper-css";
+import { fontsUrl, TYPEFACES } from "@/lib/settings";
+import { getReader } from "@/lib/supabase/server";
 
-export default async function Home() {
+// The reader's latest paper, drawn by the same components as its PDF, page for page. Signed out, the landing page.
+export default async function Paper() {
   const reader = await getReader();
   if (!reader) return <Landing />;
 
   const { data: editions, error } = await reader.supabase
     .from("editions")
-    .select("id, day, status, print_at, printed_at, print_error")
+    .select("id, status, content, layout")
+    .in("status", ["ready", "writing"])
     .order("created_at", { ascending: false });
   if (error) throw error;
-  const { timeZone } = await loadSettings(reader);
-  const time = (at: string) => new Date(at).toLocaleTimeString("en-US", { timeZone, timeStyle: "short" });
-  const stop = (id: string, label: string) => (
-    <form action={stopEdition.bind(null, id)} className="inline">
-      <button className="link">{label}</button>
-    </form>
+  const latest = editions.find((e) => e.status === "ready");
+  const writing = editions.some((e) => e.status === "writing") && (
+    <>
+      <p className="muted">A new paper is being written. It appears here when it's ready.</p>
+      <RefreshWhileWriting />
+    </>
   );
 
-  // What happened to a paper made for the printer box.
-  const printStatus = (e: NonNullable<typeof editions>[number]) => {
-    if (!e.print_at) return null;
-    if (e.printed_at) return `Printed at ${time(e.printed_at)}`;
-    if (e.print_error) return `Not printed: ${e.print_error}`;
-    if (Date.parse(e.print_at) + PRINT_WINDOW_MS < Date.now()) return "Not printed (the printer box didn't take it)";
-    return `Prints at ${time(e.print_at)}`;
-  };
+  if (!latest)
+    return (
+      <>
+        <h1>Your paper</h1>
+        {writing || <p className="muted">No paper yet.</p>}
+        {!writing && canGenerate(reader.email) && <GenerateButton />}
+      </>
+    );
 
+  const pdf = `/editions/${latest.id}`;
+  const layout = latest.layout as Layout | null;
+  if (!layout)
+    return (
+      <>
+        {writing}
+        <p className="muted">
+          This paper was made before the web view. <a href={pdf}>Read the PDF</a>, or generate a new paper on the
+          Editions page.
+        </p>
+      </>
+    );
+
+  // The pictures are in storage; links to them last an hour.
+  const sign = async (path: string | null) =>
+    path && (await reader.supabase.storage.from("editions").createSignedUrl(path, 3600)).data?.signedUrl;
+  const pictures = {
+    illustration: (await sign(layout.pictures.illustration)) ?? null,
+    comic: (await sign(layout.pictures.comic)) ?? null,
+  };
   return (
     <>
-      <h1>Editions</h1>
-      {canGenerate(reader.email) ? (
-        <GenerateButton />
-      ) : (
-        <p className="muted">Generating editions is limited to invited readers for now.</p>
-      )}
-      <ul className="editions">
-        {editions?.map((e) => (
-          <li key={e.id}>
-            <span>{new Date(`${e.day}T12:00`).toLocaleDateString("en-US", { dateStyle: "full" })}</span>
-            <span className="muted">
-              {e.status === "scheduled" && (
-                <>
-                  Scheduled: written before {time(e.print_at!)} {stop(e.id, "Cancel")}
-                </>
-              )}
-              {e.status === "writing" && <>Writing… (a few minutes) {stop(e.id, "Stop")}</>}
-              {e.status === "ready" && (
-                <>
-                  {printStatus(e)}{" "}
-                  <a href={`/editions/${e.id}`} target="_blank">
-                    Read PDF
-                  </a>
-                </>
-              )}
-              {e.status === "failed" && "Failed"}
-              {e.status === "stopped" && "Stopped"}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {editions?.length === 0 && <p className="muted">No editions yet.</p>}
-      {editions?.some((e) => e.status === "writing") && <RefreshWhileWriting />}
+      <link rel="stylesheet" href={fontsUrl(TYPEFACES[layout.settings.typeface])} precedence="default" />
+      <style href="paper-css" precedence="default">
+        {css}
+      </style>
+      {writing}
+      <PageTurner pdf={pdf} pages={layout.settings.pages.length}>
+        <Newspaper paper={latest.content as Edition} layout={{ ...layout, pictures }} />
+      </PageTurner>
     </>
   );
 }
