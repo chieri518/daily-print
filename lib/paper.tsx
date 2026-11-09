@@ -194,6 +194,28 @@ function Spots(props: { paper: Paper; layout: Layout; page: number; fillersIn: (
 // the next: this way the Paper page breaks every line where the PDF does.
 const hyphenate = english.hyphenateSync;
 
+// The story's paragraphs, with the first use of each hard term marked for the Paper page to explain (see Definition in
+// app/client.tsx). The mark has no style in print, so it doesn't change the PDF. Older editions have no terms.
+function withTerms(story: Story) {
+  const terms = new Map((story.terms ?? []).map((t) => [t.term.toLowerCase(), t.definition]));
+  if (!terms.size) return story.paragraphs.map((p) => hyphenate(p));
+  const longestFirst = [...terms.keys()].sort((a, b) => b.length - a.length);
+  const escaped = longestFirst.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`(?<!\\w)(${escaped.join("|")})(?!\\w)`, "gi"); // split() puts the matches at odd places
+  return story.paragraphs.map((p) =>
+    p.split(pattern).map((part, n) => {
+      const definition = n % 2 ? terms.get(part.toLowerCase()) : undefined;
+      if (!definition) return hyphenate(part);
+      terms.delete(part.toLowerCase());
+      return (
+        <span key={n} className="term" data-definition={definition} tabIndex={0}>
+          {hyphenate(part)}
+        </span>
+      );
+    }),
+  );
+}
+
 function Article({ story: s, lead = false, figure }: { story: Story; lead?: boolean; figure: ReactNode }) {
   return (
     <article className={lead ? "lead" : ""}>
@@ -202,8 +224,8 @@ function Article({ story: s, lead = false, figure }: { story: Story; lead?: bool
       <p className="deck">{s.deck}</p>
       {figure}
       <div className="body">
-        {s.paragraphs.map((p, n) => (
-          <p key={n}>{hyphenate(p)}</p>
+        {withTerms(s).map((p, n) => (
+          <p key={n}>{p}</p>
         ))}
         {s.sources.length > 0 && <p className="sources">Sources: {hyphenate(s.sources.map((src) => src.name).join(", "))}</p>}
       </div>

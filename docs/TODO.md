@@ -36,7 +36,9 @@ Replaces free columns (see DECISIONS.md, Customize page).
 - [ ] Page-turn viewer in the browser
 - [ ] Paper page on phones: scale the pages down to the screen width (they are print-sized, so a phone scrolls sideways)
 - [ ] Follow a story: a button on a story to follow it into later editions
-- [ ] Explain terms: highlight a term on the Paper page to get a short explanation, like a Kindle
+- [ ] Make a real edition and check the hard terms on the Paper page: are the right words picked at each reading level, and do the definitions read well?
+- [ ] Explain any term: highlight any word on the Paper page to get a short explanation, like a Kindle (hard terms the editor picks are already explained)
+- [ ] Hard terms: an "I know this" button, so a word the reader knows is never explained again
 
 ## Ideas from traditional newspapers
 
