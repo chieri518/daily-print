@@ -1,10 +1,11 @@
-// Printed newspaper, black and white. layout.ts sets the paper size. Sizes are in em so the fit step can shrink a whole page at once.
+// The newspaper's stylesheet, black and white, for paper.tsx. Everything is scoped to .paper, so it can sit inside the
+// web app without clashing with its styles. Sizes are in em so the fit step can shrink a whole page at once.
 export const css = `
-@page { margin: 0; }
-* { box-sizing: border-box; margin: 0; }
-body { font-family: var(--body), serif; color: #000; background: #fff; }
+.paper {
+font: 16px/normal var(--body), serif; color: #000; background: #fff;
+& * { box-sizing: border-box; margin: 0; }
 
-.page { padding: 0.5in; display: flex; flex-direction: column; break-after: page; }
+.page { width: var(--page-width); height: var(--page-height); padding: 0.5in; display: flex; flex-direction: column; break-after: page; }
 .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; font-size: 10pt; line-height: 1.35; }
 footer { display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 4pt; font-size: 7pt; }
 
@@ -36,7 +37,7 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .lead h2 { font-size: 2.4em; }
 .label { font-size: 0.75em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; }
 .deck { font-style: italic; margin-bottom: 0.5em; }
-.body { columns: var(--columns); column-gap: 1.5em; column-rule: 1px solid #999; text-align: justify; hyphens: auto; }
+.body { columns: var(--columns); column-gap: 1.5em; column-rule: 1px solid #999; text-align: justify; }
 .body p + p { text-indent: 1em; }
 .body .sources { text-indent: 0; font-size: 0.8em; font-style: italic; margin-top: 0.3em; }
 
@@ -111,5 +112,14 @@ table { border-collapse: collapse; margin: 0 auto 0.6em; }
   .weather .condition, .weather .day .small { display: none; }
   .almanac { font-size: 0.7em; }
   .weather-tip { font-size: 1em; }
+}
+
+/* On screen (the Paper page), the pages sit on the web page's own background, side by side: the reader scrolls (or
+   turns) from one page to the next, and each page stops in the middle. */
+@media screen {
+  & { background: none; display: flex; gap: 0.5in; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+      padding-inline: max(0px, (100% - var(--page-width)) / 2); }
+  .page { flex: none; scroll-snap-align: center; }
+}
 }
 `;

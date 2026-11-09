@@ -1,0 +1,212 @@
+import english from "hyphen/en";
+import type { CSSProperties, ReactNode } from "react";
+import type { Paper, Story } from "./editor.ts";
+import { CrosswordPuzzle, Jumble, Sudoku, Trivia, Weather, WordOfTheDay, WordSearch } from "./paper-features.tsx";
+import type { Puzzles } from "./puzzles.ts";
+import { comicShape, LAYOUTS, MAIN_STORY_WORDS, PAPER_SIZES, TYPEFACES, type Feature, type Settings } from "./settings.ts";
+import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
+import { todayLine } from "./weather.ts";
+
+// The newspaper, one <section> per printed page. The same components draw it on the Paper page and for print
+// (render.ts prints them to a PDF), with the same stylesheet (paper-css.ts, scoped to .paper), so the two always match.
+
+// How the printed pages came out: each page's font size after shrinking to fit, the section each filler went into
+// (or null if it fit nowhere), and the comic's height. render.ts measures it in Chromium.
+export type Fit = { fontSizes: number[]; fillers: (string | null)[]; comicHeight: number | null };
+
+// Everything besides the text needed to draw an edition, saved with it so it can be drawn again.
+export type Layout = {
+  settings: Settings;
+  date: string; // as printed on the masthead
+  yesterday: Puzzles | null; // the puzzles whose answers this paper prints
+  pictures: { illustration: string | null; comic: string | null }; // where to load them from (null: not drawn)
+  fit: Fit | null; // null until it has been measured
+};
+
+export function Newspaper({ paper, layout }: { paper: Paper; layout: Layout }) {
+  const { settings, date, fit } = layout;
+  const fonts = TYPEFACES[settings.typeface];
+  const size = PAPER_SIZES[settings.paperSize];
+  const style = {
+    "--masthead": `"${fonts.masthead}"`,
+    "--headline": `"${fonts.headline}"`,
+    "--body": `"${fonts.body}"`,
+    "--page-width": size.width,
+    "--page-height": size.height,
+  } as CSSProperties;
+
+  // Small items for sections with space left: render.ts measures where each fits, or leaves it out.
+  // "On this day" is left out when the paper has a section of that name.
+  const { quote, funFact, onThisDay } = paper.fillers;
+  const hasOnThisDay = settings.pages.some((p) => p.slots.some((s) => s?.title === "On This Day"));
+  const fillers = [
+    <aside className="filler" key="quote">
+      <b>Quote of the day</b>
+      <p>“{quote.text}”</p>
+      <p className="by">{quote.by}</p>
+    </aside>,
+    <aside className="filler" key="fact">
+      <b>Fun fact</b>
+      <p>{funFact}</p>
+    </aside>,
+    !hasOnThisDay && (
+      <aside className="filler" key="day">
+        <b>On this day</b>
+        <p>{onThisDay}</p>
+      </aside>
+    ),
+  ].filter(Boolean);
+  const fillersIn = (spot: string) => fit && fillers.filter((_, k) => fit.fillers[k] === spot);
+
+  return (
+    <div className="paper" style={style}>
+      {!fit && <div className="fillers">{fillers}</div>}
+      {settings.pages.map((_, i) => (
+        <section className="page" key={i}>
+          <div className="content" style={fit ? { fontSize: `${fit.fontSizes[i]}pt` } : undefined}>
+            {i === 0 && <Masthead paper={paper} settings={settings} date={date} />}
+            <Spots paper={paper} layout={layout} page={i} fillersIn={fillersIn} />
+          </div>
+          <footer>
+            <span>
+              {settings.name} · {date}
+            </span>
+            <span>Written by an AI editor. News stories cite their sources.</span>
+            <span>Page {i + 1}</span>
+          </footer>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function Masthead({ paper, settings, date }: { paper: Paper; settings: Settings; date: string }) {
+  return (
+    <>
+      <header className="masthead">
+        <h1>{settings.name}</h1>
+        <div className="meta">
+          <span>{date}</span>
+          <span>{settings.location}</span>
+          <span>{paper.forecast ? todayLine(paper.forecast) : ""}</span>
+        </div>
+      </header>
+      {paper.birthdays.length > 0 && <p className="birthdays">Birthdays today: {paper.birthdays.join(", ")}</p>}
+    </>
+  );
+}
+
+// A page is its layout's grid. Empty spots are taken over by a section next to them (see filledAreas).
+// Each section has a spot id, "page.slot", which the fit uses to place fillers.
+function Spots(props: { paper: Paper; layout: Layout; page: number; fillersIn: (spot: string) => ReactNode }) {
+  const { paper, layout, page: i, fillersIn } = props;
+  const { settings, yesterday, pictures, fit } = layout;
+  const page = settings.pages[i];
+  const space = measure(page, i === 0, settings.paperSize);
+  const stories = paper.pages[i]?.sections ?? [];
+
+  // The illustration goes with the story the editor chose for it, or nowhere if it chose none.
+  const { headline, scene } = paper.illustration;
+  const illustration = pictures.illustration ? (
+    <figure className="illustration">
+      <img src={pictures.illustration} alt="" />
+    </figure>
+  ) : (
+    <figure className="illustration empty">
+      <figcaption>Illustration: {scene}</figcaption>
+    </figure>
+  );
+  const illustrated = illustratedSpot(settings);
+  const figureFor = (s: Story, slot: number) =>
+    scene && i === 0 && slot === illustrated && s.headline === headline ? illustration : null;
+
+  const features: Record<Feature, (size: Size) => ReactNode> = {
+    weather: () => <Weather forecast={paper.forecast} tip={paper.weatherTip} />,
+    crossword: () => <CrosswordPuzzle puzzle={paper.puzzles.crossword} yesterday={yesterday?.crossword} />,
+    sudoku: () => <Sudoku puzzle={paper.puzzles.sudoku} yesterday={yesterday?.sudoku} />,
+    wordSearch: () => <WordSearch puzzle={paper.puzzles.wordSearch} />,
+    trivia: () => <Trivia puzzle={paper.puzzles.trivia} yesterday={yesterday?.trivia} />,
+    jumble: () => <Jumble puzzle={paper.puzzles.jumble!} yesterday={yesterday?.jumble} />,
+    // Without an image key, the comic prints as its four panels in words. Its measured height keeps a filler from
+    // squeezing it.
+    comic: (size) =>
+      pictures.comic ? (
+        <figure className="comic" style={fit?.comicHeight ? { flex: `0 0 ${fit.comicHeight}px` } : undefined}>
+          <img src={pictures.comic} alt="" />
+        </figure>
+      ) : (
+        <div className={`comic-text ${comicShape(size)}`}>
+          {paper.comic.panels.map((p, n) => (
+            <p key={n}>
+              {p.scene}
+              {p.dialogue && (
+                <>
+                  {" "}
+                  <b>“{p.dialogue}”</b>
+                </>
+              )}
+            </p>
+          ))}
+        </div>
+      ),
+    wordOfTheDay: () => <WordOfTheDay word={paper.wordOfTheDay} />,
+  };
+
+  let k = 0; // the editor writes stories for the filled spots, in order
+  const sections = page.slots.map((section, j) => {
+    if (!section) return null;
+    const size = space[j]!;
+    const [lead, ...others] = stories[k++]?.stories ?? [];
+    const spot = `${i}.${j}`;
+    return (
+      <div
+        className="section"
+        key={j}
+        data-spot={spot}
+        style={{ gridArea: spotLetter(j), "--columns": textColumns(size.width) } as CSSProperties}
+      >
+        <h3 className="section-title">{section.title}</h3>
+        {section.kind ? (
+          features[section.kind](size)
+        ) : (
+          <>
+            {lead && <Article story={lead} lead={words(size) >= MAIN_STORY_WORDS} figure={figureFor(lead, j)} />}
+            {others.map((s, n) => (
+              <Article key={n} story={s} figure={figureFor(s, j)} />
+            ))}
+          </>
+        )}
+        {fillersIn(spot)}
+      </div>
+    );
+  });
+
+  const areas = gridAreas(filledAreas(page));
+  const rows = LAYOUTS[page.layout].rows.map((r) => `minmax(0, ${r}fr)`).join(" ");
+  return (
+    <div className="spots" style={{ gridTemplateAreas: areas, gridTemplateRows: rows }}>
+      {sections}
+    </div>
+  );
+}
+
+// Story text is hyphenated here (soft hyphens) rather than by the browser, whose hyphenation differs from one browser to
+// the next: this way the Paper page breaks every line where the PDF does.
+const hyphenate = english.hyphenateSync;
+
+function Article({ story: s, lead = false, figure }: { story: Story; lead?: boolean; figure: ReactNode }) {
+  return (
+    <article className={lead ? "lead" : ""}>
+      {s.label && <p className="label">{s.label}</p>}
+      <h2>{s.headline}</h2>
+      <p className="deck">{s.deck}</p>
+      {figure}
+      <div className="body">
+        {s.paragraphs.map((p, n) => (
+          <p key={n}>{hyphenate(p)}</p>
+        ))}
+        {s.sources.length > 0 && <p className="sources">Sources: {hyphenate(s.sources.map((src) => src.name).join(", "))}</p>}
+      </div>
+    </article>
+  );
+}

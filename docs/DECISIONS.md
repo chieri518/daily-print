@@ -88,4 +88,7 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Next.js on Vercel. Supabase for sign-in (Google only), the database and the PDFs | |
 | Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`. Readers only see their own rows | No tables until a feature needs them |
 | A calm, minimal landing page with a sketch of a front page | |
+| The **Paper** page (the home page once signed in) shows the latest paper in the browser, page for page as it prints. It is the main way to read the paper; printing is a bonus | New features will be built on the web view. Replaced the Editions list as the home page |
+| The web view and the PDF are drawn by the **same React components and stylesheet**. Printing measures the fit (font sizes, filler spots, comic height) and saves it with the edition, and the Paper page draws with that fit | The two match exactly, and the web view is a real page that features like following a story or explaining terms can build on. Saving a finished-HTML snapshot was tried first, but it can't grow into those features. Papers made before this have only a PDF |
+| Story text is hyphenated in code (soft hyphens, the `hyphen` package), not with the browser's `hyphens: auto` | Each browser hyphenates differently (some not at all), which moved line breaks between the PDF and the web view |
 | Code is short and easy to read, without repetition | Also in [CLAUDE.md](../CLAUDE.md) |

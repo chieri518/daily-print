@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { generate } from "./actions";
 
@@ -36,6 +36,68 @@ export function RefreshWhileWriting() {
     return () => clearInterval(timer);
   }, [router]);
   return null;
+}
+
+// The Paper page's pages, side by side: the arrows, or the ← and → keys, turn to the previous or next page.
+// The bar with the arrows stays at the top of the window while the reader scrolls down a page.
+export function PageTurner({ pdf, pages: count, children }: { pdf: string; pages: number; children: ReactNode }) {
+  const root = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLElement>(null);
+  const [page, setPage] = useState(0);
+
+  // The strip of pages, how far each page is from its middle, and the page nearest the middle.
+  const view = () => {
+    const strip = root.current!.querySelector<HTMLElement>(".paper")!;
+    const pages = [...strip.querySelectorAll<HTMLElement>(".page")];
+    const middle = (r: DOMRect) => r.left + r.width / 2;
+    const offset = (p: HTMLElement) => middle(p.getBoundingClientRect()) - middle(strip.getBoundingClientRect());
+    const current = pages.reduce((best, p, i) => (Math.abs(offset(p)) < Math.abs(offset(pages[best])) ? i : best), 0);
+    return { strip, pages, offset, current };
+  };
+
+  const turn = (step: number) => {
+    const { strip, pages, offset, current } = view();
+    const next = pages[current + step];
+    if (!next) return;
+    strip.scrollBy({ left: offset(next), behavior: "smooth" });
+    // Back to the top of the page, if the reader had scrolled down.
+    const top = strip.getBoundingClientRect().top - bar.current!.offsetHeight;
+    if (top < 0) window.scrollBy({ top, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const { strip } = view();
+    const onScroll = () => setPage(view().current);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") turn(e.key === "ArrowLeft" ? -1 : 1);
+    };
+    strip.addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("keydown", onKey);
+    return () => {
+      strip.removeEventListener("scroll", onScroll);
+      removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  return (
+    <div ref={root}>
+      <nav className="paper-bar" ref={bar}>
+        <button className="link" onClick={() => turn(-1)} disabled={page === 0} aria-label="Previous page">
+          ‹
+        </button>
+        <span>
+          Page {page + 1} of {count}
+        </span>
+        <button className="link" onClick={() => turn(1)} disabled={page === count - 1} aria-label="Next page">
+          ›
+        </button>
+        <a href={pdf} target="_blank">
+          PDF
+        </a>
+      </nav>
+      {children}
+    </div>
+  );
 }
 
 // The landing page's masthead: cycles through example paper names, unless the reader prefers less motion.

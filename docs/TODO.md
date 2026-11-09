@@ -34,6 +34,9 @@ Replaces free columns (see DECISIONS.md, Customize page).
 - [ ] Feedback on stories that shapes future editions
 - [ ] Spanish
 - [ ] Page-turn viewer in the browser
+- [ ] Paper page on phones: scale the pages down to the screen width (they are print-sized, so a phone scrolls sideways)
+- [ ] Follow a story: a button on a story to follow it into later editions
+- [ ] Explain terms: highlight a term on the Paper page to get a short explanation, like a Kindle
 
 ## Ideas from traditional newspapers
 

@@ -15,6 +15,7 @@ Unknowns still to resolve. When one is answered, move the answer to [DECISIONS.m
 - **Layouts:** do the puzzles read well in one of three columns? Are 8 layouts enough, and which do readers actually use?
 - **Fillers:** if a gap is still left after the fillers, should text grow slightly, or is a little space fine?
 - **Smallest readable size:** is text shrunk to 7.5pt readable on paper?
+- **Web view in other browsers:** the fit is measured in Chromium. Firefox and Safari measure text slightly differently, so a line could wrap differently there and the end of a section be cut off. Is that rare enough, or should the Paper page check for it?
 - **Word counts:** measured with sample text in the Classic typeface. Other typefaces and real headlines may fit more or less.
 - **Faster or cheaper:** Sonnet for research, or lower effort for writing, would be faster still. Compare editions side by side before switching. Is the Opinion section's research worth its time, when its editorial is about other stories?
 - **Sources:** blocked sources are only an instruction to Claude. Web search can block domains for real, but readers type names ("The Daily Mail") rather than domains. Is the instruction enough?

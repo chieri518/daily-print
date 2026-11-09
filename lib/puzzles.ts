@@ -1,6 +1,5 @@
 // Puzzles made by code, so they are always solvable. Claude only picks the words, clues and quiz questions.
 // Each puzzle uses a seeded random generator, so making the same edition again gives the same puzzles.
-import { esc } from "./html.ts";
 
 export type Clue = { answer: string; clue: string };
 // Grid squares are null where black; numbered squares start a word.
@@ -244,60 +243,4 @@ function jumble(list: string[], rand: () => number) {
     return word; // e.g. "EEE" can't be scrambled
   });
   return { words, scrambled };
-}
-
-// --- How each puzzle prints ---
-
-const table = (rows: string[][], className: string) =>
-  `<table class="${className}">${rows.map((row) => `<tr>${row.join("")}</tr>`).join("")}</table>`;
-
-// Each puzzle prints with yesterday's answers below it, when there was a puzzle yesterday.
-const answers = (content: string | false) =>
-  content ? `<div class="yesterday"><b>Yesterday's answers</b>${content}</div>` : "";
-
-const grid9 = (cells: number[], className: string) =>
-  table(
-    Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => `<td>${cells[r * 9 + c] || ""}</td>`)),
-    className,
-  );
-
-export function sudokuHtml({ puzzle }: Puzzles["sudoku"], yesterday?: Puzzles["sudoku"]) {
-  return grid9(puzzle, "sudoku") + answers(!!yesterday && grid9(yesterday.solution, "sudoku mini"));
-}
-
-export function crosswordHtml({ grid, across, down }: Crossword, yesterday?: Crossword) {
-  const rows = grid.map((row) =>
-    row.map((cell) => (cell ? `<td>${cell.n ? `<sup>${cell.n}</sup>` : ""}</td>` : `<td class="black"></td>`)),
-  );
-  const list = (title: string, clues: { n: number; clue: string }[]) =>
-    `<p><b>${title}</b></p>${clues.map((c) => `<p>${c.n}. ${esc(c.clue)}</p>`).join("")}`;
-  const words = (list: Crossword["across"]) => list.map((w) => `${w.n} ${w.answer}`).join(", ");
-  return `<div class="crossword">${table(rows, "grid")}<div class="clues">${list("Across", across)}${list(
-    "Down",
-    down,
-  )}</div></div>
-    ${answers(!!yesterday && `<p>Across: ${words(yesterday.across)}. Down: ${words(yesterday.down)}.</p>`)}`;
-}
-
-// No answers for the word search: its words are already listed.
-export function wordSearchHtml({ grid, words }: Puzzles["wordSearch"]) {
-  return `<div class="word-search">${table(
-    grid.map((row) => [...row].map((l) => `<td>${l}</td>`)),
-    "grid letters",
-  )}
-    <p class="words">${words.join(" · ")}</p></div>`;
-}
-
-// Each scrambled word in tiles, with empty squares to write the answer.
-export function jumbleHtml({ scrambled }: NonNullable<Puzzles["jumble"]>, yesterday?: Puzzles["jumble"]) {
-  const row = (word: string) =>
-    `<div class="jumble-word"><span class="tiles">${[...word].map((l) => `<span>${l}</span>`).join("")}</span>
-      <span class="blanks">${[...word].map(() => "<span></span>").join("")}</span></div>`;
-  return `<div class="jumble">${scrambled.map(row).join("")}</div>
-    ${answers(!!yesterday && `<p>${yesterday.words.join(" · ")}</p>`)}`;
-}
-
-export function triviaHtml(trivia: Puzzles["trivia"], yesterday?: Puzzles["trivia"]) {
-  return `<ol class="trivia">${trivia.map((t) => `<li>${esc(t.question)}</li>`).join("")}</ol>
-    ${answers(!!yesterday && `<p>${yesterday.map((t, i) => `${i + 1}. ${esc(t.answer)}`).join(" · ")}</p>`)}`;
 }
