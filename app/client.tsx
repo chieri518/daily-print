@@ -96,8 +96,30 @@ export function PageTurner({ pdf, pages: count, children }: { pdf: string; pages
         </a>
       </nav>
       {children}
+      <Definition />
     </div>
   );
+}
+
+// A hard term's definition, shown while the reader hovers over the term or taps it (terms are marked in lib/paper.tsx).
+// It's drawn outside the pages, since they cut off anything that sticks out of a section.
+function Definition() {
+  const [tip, setTip] = useState<{ text: string; left: number; top: number } | null>(null);
+  useEffect(() => {
+    const show = (e: Event) => {
+      const term = (e.target as Element).closest<HTMLElement>(".term");
+      if (!term) return;
+      const r = term.getBoundingClientRect();
+      setTip({ text: term.dataset.definition!, left: Math.min(r.left, innerWidth - 300), top: r.bottom });
+    };
+    const hide = () => setTip(null);
+    const events = { mouseover: show, focusin: show, mouseout: hide, focusout: hide, scroll: hide };
+    for (const [name, handler] of Object.entries(events)) addEventListener(name, handler, true);
+    return () => {
+      for (const [name, handler] of Object.entries(events)) removeEventListener(name, handler, true);
+    };
+  }, []);
+  return tip && <div className="definition" style={{ left: Math.max(tip.left, 8), top: tip.top }}>{tip.text}</div>;
 }
 
 // The landing page's masthead: cycles through example paper names, unless the reader prefers less motion.

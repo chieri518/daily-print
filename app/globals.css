@@ -34,6 +34,10 @@ button { font: inherit; cursor: pointer; }
 .paper-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; align-items: center; gap: 1.25rem; padding: 0.5rem 0; background: var(--paper); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
 .paper-bar button { font-size: 1.6rem; line-height: 1; text-decoration: none; }
 .paper-bar a { position: absolute; right: 0; }
+/* Hard terms and their definitions. Only here, not in paper-css.ts, so the PDF has no underlines. */
+.term { text-decoration: underline dotted; text-underline-offset: 0.15em; cursor: help; }
+.term:focus { outline: none; }
+.definition { position: fixed; z-index: 10; max-width: 18rem; margin-top: 0.3rem; padding: 0.4rem 0.6rem; background: var(--ink); color: var(--paper); font-size: 0.85rem; line-height: 1.35; border-radius: 3px; pointer-events: none; }
 
 .editions { list-style: none; padding: 0; }
 .editions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }

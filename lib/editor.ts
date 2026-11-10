@@ -11,6 +11,14 @@ const Story = z.object({
   deck: z.string().describe("One-sentence subheadline"),
   paragraphs: z.array(z.string()),
   sources: z.array(z.object({ name: z.string(), url: z.string() })),
+  terms: z
+    .array(
+      z.object({
+        term: z.string().describe("Exactly as written in the story"),
+        definition: z.string().describe("A short, plain definition, under 15 words"),
+      }),
+    )
+    .describe("Hard words and acronyms in the story that this reader may not know, explained on the Paper page"),
 });
 
 // What the editor writes: the stories, and the picture that goes with one of them.
@@ -171,6 +179,7 @@ Rules:
 - A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
 - Don't tell the same story in two sections.
 - Write like a good newspaper: clear, concrete and short paragraphs.
+- In each story's terms, list the hard words and acronyms a reader at this reading level may not know, with what they mean in the story. Leave out words and acronyms most readers know (e.g. "TV", "NASA"). Often there are none.
 ${pictureRule(settings)}
 ${preferences(settings)}
 
