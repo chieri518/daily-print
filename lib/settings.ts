@@ -191,6 +191,13 @@ export async function settingsFor(db: SupabaseClient, userId: string) {
   return settingsOrDefaults(data?.settings);
 }
 
+// The hard terms a reader marked as known on the Paper page, in lower case. They are never explained again.
+export async function knownWordsFor(db: SupabaseClient, userId: string): Promise<string[]> {
+  const { data, error } = await db.from("known_words").select("word").eq("user_id", userId);
+  if (error) throw error;
+  return data.map((row) => row.word);
+}
+
 export type Section = z.infer<typeof Section>;
 export type Feature = keyof typeof FEATURES;
 export type Page = z.infer<typeof Page>;

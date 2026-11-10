@@ -63,6 +63,15 @@ export async function generate(form: FormData) {
   revalidatePath("/", "layout"); // the Paper and Editions pages
 }
 
+// Remembers a hard term the reader knows (the ✓ on the Paper page), so it's never explained again.
+export async function knowWord(word: string) {
+  const reader = await requireReader();
+  const { error } = await reader.supabase
+    .from("known_words")
+    .upsert({ user_id: reader.id, word: word.toLowerCase() }, { ignoreDuplicates: true });
+  if (error) throw error;
+}
+
 // Stops an edition that's scheduled or being written. The workflow sees the new status before its next step and quits.
 // This works even when the workflow was lost, so an edition never stays "writing" forever.
 export async function stopEdition(id: string) {

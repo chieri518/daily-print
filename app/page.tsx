@@ -4,7 +4,7 @@ import { canGenerate } from "@/lib/allowed";
 import type { Paper as Edition } from "@/lib/editor";
 import { Newspaper, type Layout } from "@/lib/paper";
 import { css } from "@/lib/paper-css";
-import { fontsUrl, TYPEFACES } from "@/lib/settings";
+import { fontsUrl, knownWordsFor, TYPEFACES } from "@/lib/settings";
 import { getReader } from "@/lib/supabase/server";
 
 // The reader's latest paper, drawn by the same components as its PDF, page for page. Signed out, the landing page.
@@ -55,6 +55,7 @@ export default async function Paper() {
     illustration: (await sign(layout.pictures.illustration)) ?? null,
     comic: (await sign(layout.pictures.comic)) ?? null,
   };
+  const known = new Set(await knownWordsFor(reader.supabase, reader.id));
   return (
     <>
       <link rel="stylesheet" href={fontsUrl(TYPEFACES[layout.settings.typeface])} precedence="default" />
@@ -63,8 +64,18 @@ export default async function Paper() {
       </style>
       {writing}
       <PageTurner pdf={pdf} pages={layout.settings.pages.length}>
-        <Newspaper paper={latest.content as Edition} layout={{ ...layout, pictures }} />
+        <Newspaper paper={withoutKnown(latest.content as Edition, known)} layout={{ ...layout, pictures }} />
       </PageTurner>
     </>
   );
+}
+
+// The paper without the hard terms the reader already knows, so they aren't explained.
+function withoutKnown(paper: Edition, known: Set<string>): Edition {
+  const pages = paper.pages.map(({ sections }) => ({
+    sections: sections.map(({ stories }) => ({
+      stories: stories.map((s) => ({ ...s, terms: (s.terms ?? []).filter((t) => !known.has(t.term.toLowerCase())) })),
+    })),
+  }));
+  return { ...paper, pages };
 }

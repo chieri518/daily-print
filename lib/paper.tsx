@@ -208,7 +208,7 @@ function withTerms(story: Story) {
       if (!definition) return hyphenate(part);
       terms.delete(part.toLowerCase());
       return (
-        <span key={n} className="term" data-definition={definition} tabIndex={0}>
+        <span key={n} className="term" data-term={part.toLowerCase()} data-definition={definition} tabIndex={0}>
           {hyphenate(part)}
         </span>
       );
