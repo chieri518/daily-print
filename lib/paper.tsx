@@ -229,6 +229,28 @@ function Article({ story: s, lead = false, figure }: { story: Story; lead?: bool
         ))}
         {s.sources.length > 0 && <p className="sources">Sources: {hyphenate(s.sources.map((src) => src.name).join(", "))}</p>}
       </div>
+      <StoryTimeline timeline={s.timeline} whyItMatters={s.whyItMatters} />
     </article>
+  );
+}
+
+// Older editions have no timeline; their saved layout and PDF remain valid.
+function StoryTimeline({ timeline, whyItMatters }: { timeline?: Story["timeline"]; whyItMatters?: string }) {
+  if (!timeline || timeline.length < 3) return null;
+  const milestones = timeline.slice(0, 3);
+  return (
+    <aside className="story-timeline" aria-label="Story progression">
+      <p className="timeline-title">How it unfolded</p>
+      <ol>
+        {milestones.map((milestone, i) => (
+          <li key={i}>
+            <span className="timeline-date">{milestone.date}</span>
+            <span className="timeline-stage">{i === 0 ? "Started" : i === milestones.length - 1 ? "Now" : "Changed"}</span>
+            <span>{hyphenate(milestone.event)}</span>
+          </li>
+        ))}
+      </ol>
+      {whyItMatters?.trim() && <p className="timeline-impact"><b>Why it matters</b> {hyphenate(whyItMatters.trim())}</p>}
+    </aside>
   );
 }
