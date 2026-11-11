@@ -11,6 +11,14 @@ const Story = z.object({
   deck: z.string().describe("One-sentence subheadline"),
   paragraphs: z.array(z.string()),
   sources: z.array(z.object({ name: z.string(), url: z.string() })),
+  timeline: z
+    .array(z.object({
+      date: z.string().describe('Short, verified date label, including the year when needed, e.g. "Nov 8"'),
+      event: z.string().describe("One development in at most 10 words"),
+    }))
+    .max(3)
+    .describe("Exactly 3 sourced milestones, oldest first, or an empty array when fewer than 3 are verified"),
+  whyItMatters: z.string().describe("A fresh consequence in at most 12 words, only if the story does not already explain it. Empty otherwise"),
   terms: z
     .array(
       z.object({
@@ -109,10 +117,11 @@ function pagePlan(settings: Settings) {
       const lines = page.slots.flatMap((s, j) => {
         if (!s) return [];
         if (s.kind) return [`${FEATURES[s.kind].title}. Made automatically: leave its stories empty.`];
-        const fit = words(space[j]!);
+        // Leave room for chronology rules, dates and dots as well as story text.
+        const fit = Math.floor(words(space[j]!) * 0.75 / 10) * 10;
         const size =
           i === 0 && j === illustrated
-            ? `About ${fit - pictureWords(space[j]!.width)} words with the illustration, or ${fit} without it.`
+            ? `About ${Math.max(0, fit - pictureWords(space[j]!.width))} words with the illustration, or ${fit} without it.`
             : `About ${fit} words.`;
         return [`${s.title} (${s.about}). ${size}`];
       });
@@ -152,6 +161,7 @@ export async function research(settings: Settings, date: string) {
 Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).
 ${s.sources?.length ? `Prefer these sources: ${s.sources.join(", ")}.` : ""}
 For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: a few searches are enough.
+Include up to 3 dated milestones showing how each story developed, from earlier background to the latest news. Only include dates and events verified by the sources; do not invent history or future developments.
 ${preferences(settings)}`,
         { label: `Research: ${s.title}`, search: true },
       ),
@@ -174,6 +184,9 @@ ${pagePlan(settings)}
 Rules:
 - Write in English. Tone: ${TONES[settings.tone].guide}. Reading level: ${READING_LEVELS[settings.readingLevel]}.
 - News stories must only use facts from the notes, and must list their sources.
+- Add a compact timeline to a news story only when the notes verify at least 3 distinct, dated developments in chronological order: what started the story, a meaningful change, and its current status. End with what is known now, without repeating the headline. Each event is at most 10 words. Use exactly 3 milestones or an empty array; never include a 2-event timeline. Use an empty array for editorials and other non-news pieces. Never invent dates or predictions.
+- Fill whyItMatters with one sourced, concrete consequence of this development, at most 12 words, only when the timeline has 3 events and the article does not already explain it. Otherwise leave it empty. It is printed beneath the timeline and counts toward the section's space.
+- Timeline text counts toward the section's word limit. Reserve roughly 0.7 inches of section height for each timeline by shortening the article body; allow more room in narrow sections. Keep timelines concise so they fit below the story.
 - Pieces you write yourself, such as editorials and analysis, must say so in their label (e.g. "Editorial").
 - The word counts are limits: the paper is printed, and text that doesn't fit is cut off. Stay at or under them.
 - A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
