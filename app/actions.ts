@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
-import { Settings } from "@/lib/settings";
+import { followedHeadline, type Paper } from "@/lib/editor";
+import { MAX_FOLLOWED, Settings } from "@/lib/settings";
 import { disconnect } from "@/lib/google";
 import { newPrinterKey } from "@/lib/printer";
 import { scheduleNext } from "@/lib/schedule";
@@ -76,6 +77,30 @@ export async function stopEdition(id: string) {
     .in("status", ["scheduled", "writing"]);
   if (stopped.error) throw stopped.error;
   revalidatePath("/", "layout"); // the Paper and Editions pages
+}
+
+// Follows a story from one of the reader's editions, or stops following it. Updates on followed stories go in Your
+// Desk; an update there stands for the story it updates. Returns false if the reader already follows the most allowed.
+export async function follow(editionId: string, headline: string, on: boolean) {
+  const reader = await requireReader();
+  const { data, error } = await reader.supabase.from("editions").select("content").eq("id", editionId).single();
+  if (error) throw error;
+  const stories = (data.content as Paper).pages.flatMap((p) => p.sections.flatMap((s) => s.stories));
+  const story = stories.find((s) => s.headline === headline);
+  if (!story) throw new Error("That story isn't in this edition.");
+  const followed = () => reader.supabase.from("followed_stories");
+  if (on) {
+    const { count } = await followed().select("headline", { count: "exact", head: true });
+    if ((count ?? 0) >= MAX_FOLLOWED) return false;
+    const row = { user_id: reader.id, headline: followedHeadline(story), deck: story.deck };
+    const { error } = await followed().upsert(row, { ignoreDuplicates: true });
+    if (error) throw error;
+  } else {
+    const { error } = await followed().delete().eq("headline", followedHeadline(story));
+    if (error) throw error;
+  }
+  refresh(); // the Paper page, with the new follow buttons
+  return true;
 }
 
 // Stops reading birthdays from the reader's Google Calendar, and tells Google to cancel the access.

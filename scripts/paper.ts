@@ -20,12 +20,13 @@ console.log(
   }. This takes a few minutes...`,
 );
 const started = Date.now();
+// Following stories needs the web app, so Your Desk, if the paper has it, says how to follow one.
 const [forecast, notes] = await Promise.all([
   step("Getting the forecast", () => getForecast(settings.location, settings.temperature)),
-  step("Researching the news", () => research(settings, date)),
+  step("Researching the news", () => research(settings, date, [])),
 ]);
 const { edition, usd } = await step("Writing the edition", () =>
-  write(settings, date, notes.notes, forecast ? describeForecast(forecast) : ""),
+  write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "", []),
 );
 const images = await step("Drawing the pictures", () => drawPictures(settings, edition));
 // Birthdays need a Google Calendar connected in the web app, so this command prints without them.
