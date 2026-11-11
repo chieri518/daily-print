@@ -1,7 +1,16 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
 import { makePuzzles, type Puzzles } from "./puzzles.ts";
-import { FEATURES, MAIN_STORY_WORDS, READING_LEVELS, TONES, type Section, type Settings } from "./settings.ts";
+import {
+  FEATURES,
+  hasDesk,
+  isDesk,
+  MAIN_STORY_WORDS,
+  READING_LEVELS,
+  TONES,
+  type Section,
+  type Settings,
+} from "./settings.ts";
 import { illustratedSpot, measure, pictureWords, words } from "./space.ts";
 import type { Forecast } from "./weather.ts";
 
@@ -19,6 +28,9 @@ const Story = z.object({
       }),
     )
     .describe("Hard words and acronyms in the story that this reader may not know, explained on the Paper page"),
+  follows: z
+    .string()
+    .describe("In Your Desk only: the headline of the followed story this updates, exactly as listed. Empty elsewhere"),
 });
 
 // What the editor writes: the stories, and the picture that goes with one of them.
@@ -86,6 +98,16 @@ const Extras = z.object({
 export type Story = z.infer<typeof Story>;
 export type Edition = z.infer<typeof Stories> & z.infer<typeof Extras>;
 
+// A story the reader follows from the Paper page, and the day (YYYY-MM-DD) they started. Its updates go in Your Desk.
+export type Followed = { headline: string; deck: string; since: string };
+
+// The followed story a story is about: an update in Your Desk is about the story it updates, any other about itself.
+// Editions made before following have no `follows`.
+export const followedHeadline = (story: Story) => story.follows || story.headline;
+
+const listFollowed = (followed: Followed[]) =>
+  followed.map((f) => `- "${f.headline}": ${f.deck} (followed since ${f.since})`).join("\n");
+
 // Everything that goes into a printed edition. Saved with the edition, so tomorrow's paper can print the answers.
 // Birthdays are names from the reader's Google Calendar; they never go to Claude.
 export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles; birthdays: string[] };
@@ -142,27 +164,41 @@ function preferences(settings: Settings) {
     .join("\n");
 }
 
+// Your Desk's rule for the editor: an update on each followed story, or a note on how to follow one.
+function deskRule(settings: Settings, followed: Followed[]) {
+  if (!hasDesk(settings)) return "";
+  if (!followed.length)
+    return `- Your Desk: the reader follows no stories yet. Write one short note labeled "From the editor", with no sources, saying that pressing + next to a story on the Paper page follows it, and its updates appear here.`;
+  return `- Your Desk, whatever its size, holds one short update for each story the reader follows, the most news first, with "follows" set to the followed story's headline exactly as listed. A story with no news in the notes gets a short headline and one sentence saying so. News about a followed story goes in Your Desk, not in another section. The followed stories:
+${listFollowed(followed)}`;
+}
+
 // Step 1: research today's news with web search: one Claude call per section, in parallel. Returns notes, not articles.
-export async function research(settings: Settings, date: string) {
+// Your Desk researches the stories the reader follows, if any.
+export async function research(settings: Settings, date: string, followed: Followed[]) {
   const sections = storySections(settings);
   const results = await Promise.all(
-    sections.map((s) =>
-      ask(
+    sections.map((s) => {
+      if (isDesk(s) && !followed.length) return { text: "The reader follows no stories yet.", usd: 0 };
+      const task = isDesk(s)
+        ? `Find what's new in the last 24 hours on each story the reader follows, or say there's nothing new:\n${listFollowed(followed)}`
+        : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).`;
+      return ask(
         `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
-Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).
+${task}
 ${s.sources?.length ? `Prefer these sources: ${s.sources.join(", ")}.` : ""}
 For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: a few searches are enough.
 ${preferences(settings)}`,
         { label: `Research: ${s.title}`, search: true },
-      ),
-    ),
+      );
+    }),
   );
   const notes = results.map((r, k) => `## ${sections[k].title}\n${r.text}`).join("\n\n");
   return { notes, usd: results.reduce((sum, r) => sum + r.usd, 0) };
 }
 
 // Step 2: write the edition from the notes. The stories and the extras are written at the same time.
-export async function write(settings: Settings, date: string, notes: string, forecast: string) {
+export async function write(settings: Settings, date: string, notes: string, forecast: string, followed: Followed[]) {
   const [stories, extras] = await Promise.all([
     ask(
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
@@ -181,6 +217,7 @@ Rules:
 - Write like a good newspaper: clear, concrete and short paragraphs.
 - In each story's terms, list the hard words and acronyms a reader at this reading level may not know, with what they mean in the story. Leave out words and acronyms most readers know (e.g. "TV", "NASA"). Often there are none.
 ${pictureRule(settings)}
+${deskRule(settings, followed)}
 ${preferences(settings)}
 
 Research notes:

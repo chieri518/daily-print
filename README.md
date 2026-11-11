@@ -12,7 +12,7 @@ Why a newspaper and not a news app:
 
 ## Status
 
-Built: a web app where readers sign in with Google, design their paper on the Customize page, and read each edition on the Paper page, turning pages left and right, or as a PDF. Editions are made on demand, or every morning for a printer box at home. Next: deploying it so the paper prints by itself every morning, and features on the web view: following a story, and explaining terms. See [docs/TODO.md](docs/TODO.md).
+Built: a web app where readers sign in with Google, design their paper on the Customize page, and read each edition on the Paper page, turning pages left and right, or as a PDF. Editions are made on demand, or every morning for a printer box at home. Readers can follow a story with + on the Paper page; updates on it appear in the Your Desk section. Next: deploying it so the paper prints by itself every morning, and explaining any term on the web view. See [docs/TODO.md](docs/TODO.md).
 
 ## Set up
 

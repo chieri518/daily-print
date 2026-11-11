@@ -76,7 +76,10 @@
           "about": "five questions about today's stories",
           "kind": "trivia"
         },
-        null
+        {
+          "title": "Your Desk",
+          "about": "updates on the stories you follow"
+        }
       ]
     }
   ],

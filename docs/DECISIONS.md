@@ -43,6 +43,7 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | **Puzzles:** Sudoku, Mini Crossword, Word Search, Jumble, News Quiz. Code makes the grids, so they're always valid; Claude picks the words and clues. Each prints yesterday's answers below it | Puzzles are saved with each edition, for the next day's answers |
 | **Word of the Day**, and **Birthdays today** from Google Calendar: a slim line under the masthead, only on days with birthdays | Birthday names never go to Claude |
 | Puzzles stay inside the paper; the weather, comic and word of the day can go on the front page | |
+| **Your Desk:** a ready-made section of updates on the stories the reader follows, one short update per story, with a line for stories with no news. It's placed like any other section; the default pages put it last, in page 3's empty box. Its research looks up the followed stories instead of a topic. With nothing followed, it says how to follow a story | The reader chooses where it goes, like every section. Readers who saved pages before it was added drag it in themselves, or use Default pages |
 | **Fillers** fill space left at the bottom of a section: quote of the day, fun fact, on this day (one line). They're written with the extras and only printed where they fit | Real papers fill leftover space with small items instead of leaving it blank |
 
 ## Customize page
@@ -86,10 +87,11 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Decision | Why |
 |---|---|
 | Next.js on Vercel. Supabase for sign-in (Google only), the database and the PDFs | |
-| Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`. Readers only see their own rows | No tables until a feature needs them |
+| Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`, `followed_stories`. Readers only see their own rows | No tables until a feature needs them |
 | A calm, minimal landing page with a sketch of a front page | |
 | The **Paper** page (the home page once signed in) shows the latest paper in the browser, page for page as it prints. It is the main way to read the paper; printing is a bonus | New features will be built on the web view. Replaced the Editions list as the home page |
 | The web view and the PDF are drawn by the **same React components and stylesheet**. Printing measures the fit (font sizes, filler spots, comic height) and saves it with the edition, and the Paper page draws with that fit | The two match exactly, and the web view is a real page that features like following a story or explaining terms can build on. Saving a finished-HTML snapshot was tried first, but it can't grow into those features. Papers made before this have only a PDF |
 | Story text is hyphenated in code (soft hyphens, the `hyphen` package), not with the browser's `hyphens: auto` | Each browser hyphenates differently (some not at all), which moved line breaks between the PDF and the web view |
 | **Hard terms** (uncommon words and acronyms) are explained on the Paper page: the first use in each story has a dotted underline, and hovering or tapping it shows a short definition. The editor picks them for the reader's reading level while writing the stories, and nothing changes in print | No extra Claude call. The underline is styled only in the site's stylesheet, so the PDF and its line breaks stay the same. Readers can't mark words as known yet. Papers made before this have no terms |
+| **Following a story:** a + on the rule above each story on the Paper page (✓ while following; press again to stop). A story is known by its headline; an update in Your Desk stands for the story it updates, so it can be unfollowed there. At most **5** followed stories. Never in print: the PDF is drawn without the buttons | No extra Claude call to follow. The limit keeps Your Desk's research to one call and its updates short. Followed stories are kept until the reader stops following them |
 | Code is short and easy to read, without repetition | Also in [CLAUDE.md](../CLAUDE.md) |
