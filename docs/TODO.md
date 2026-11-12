@@ -2,7 +2,8 @@
 
 ## Now: the paper prints by itself every morning
 
-0. [ ] **Apply the database migrations:** `npx supabase db push` (followed stories and the edition stage). The Paper and Editions pages fail until the stage is applied
+0. [ ] **Apply the database migrations:** `npx supabase db push` (followed stories, the edition stage, and one paper per print time). The Paper and Editions pages fail until the stage is applied
+   - [ ] Email the reader when a paper fails or is skipped (needs an email provider)
 1. [ ] **Deploy to Vercel:**
    - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`)
    - [ ] Deploy, then add the Vercel URL in Supabase (Authentication → URL Configuration) and in Google Cloud (OAuth origins and redirect URIs)

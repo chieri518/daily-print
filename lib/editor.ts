@@ -183,29 +183,43 @@ ${listFollowed(followed)}`;
 }
 
 // Step 1: research today's news with web search: one Claude call per section, in parallel. Returns notes, not articles.
-// Your Desk researches the stories the reader follows, if any.
+// Your Desk researches the stories the reader follows, if any. A section whose research fails twice is skipped with a
+// note to the editor, rather than failing the whole paper; only when every section fails does the paper fail.
 export async function research(settings: Settings, date: string, followed: Followed[]) {
   const sections = storySections(settings);
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     sections.map((s) => {
       if (isDesk(s) && !followed.length) return { text: "The reader follows no stories yet.", usd: 0 };
       const task = isDesk(s)
         ? `Find what's new in the last 24 hours on each story the reader follows, or say there's nothing new:\n${listFollowed(followed)}`
         : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).`;
-      return ask(
-        `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
+      const call = () =>
+        ask(
+          `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
 ${task}
 ${s.sources?.length ? `Prefer these sources: ${s.sources.join(", ")}.` : ""}
 For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: a few searches are enough.
 Include up to 3 dated milestones showing how each story developed, from earlier background to the latest news. Only include dates and events verified by the sources; do not invent history or future developments.
 ${preferences(settings)}`,
-        { label: `Research: ${s.title}`, search: true },
-      );
+          { label: `Research: ${s.title}`, search: true },
+        );
+      return call().catch(call); // retried once, like every Claude call
     }),
   );
-  const notes = results.map((r, k) => `## ${sections[k].title}\n${r.text}`).join("\n\n");
-  return { notes, usd: results.reduce((sum, r) => sum + r.usd, 0) };
+  const failed = results.flatMap((r, k) => (r.status === "rejected" ? [`${sections[k].title}: ${r.reason}`] : []));
+  if (failed.length && failed.length === results.length) {
+    throw new Error(`Research failed for every section. ${failed[0]}`);
+  }
+  if (failed.length) console.warn(`Research skipped:\n${failed.join("\n")}`);
+  const notes = results
+    .map((r, k) => `## ${sections[k].title}\n${r.status === "fulfilled" ? r.value.text : SKIPPED}`)
+    .join("\n\n");
+  const usd = results.reduce((sum, r) => sum + (r.status === "fulfilled" ? r.value.usd : 0), 0);
+  return { notes, usd };
 }
+
+// The notes for a section whose research failed. The editor only writes facts from the notes, so it says so instead.
+const SKIPPED = `No research today: the search for this section failed. Write one short piece labeled "From the editor", with no sources, saying this section has no news today.`;
 
 // Step 2: write the edition from the notes. The stories and the extras are written at the same time.
 // `known` are the hard terms the reader already knows.

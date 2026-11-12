@@ -19,10 +19,11 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 |---|---|
 | News is **summarized with sources**. Pieces the editor writes itself (editorial, analysis) say so in their label | |
 | **Research:** one Claude call per section, all at once, with up to 6 web searches each | One long call took 3 minutes; this takes about 80 seconds |
+| A section whose research fails twice is **skipped**: the editor writes a one-line "no news today" piece for it. The paper fails only when every section fails | One failed section used to fail the whole paper, and retrying the research step paid again for every section that had worked |
 | **Writing:** two calls at once: the stories (Claude Opus) and the extras (Claude Sonnet, faster): weather tip, puzzle words, quiz, word of the day, comic | About 80 seconds instead of 2 minutes. The extras come from the research notes |
 | Each story's **word limit** comes from the size of its spot in the layout (estimated in `lib/space.ts`). Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off. Fixed boxes with fixed word counts left gaps whenever a story came in short |
 | Tone (straight news, conversational, witty, **Gen Z**) and reading level are settings. Readers can add a **brief to the editor**, sources to trust or avoid, and preferred sources per section | Sources are instructions to Claude, not enforced |
-| Claude calls retry at most once | They cost money |
+| Claude calls retry at most once | They cost money. The exception: when every section's research fails, the research step is retried, so each section is tried up to 4 times. That's most likely an outage, when nothing is paid for |
 | Locally, `USE_CLAUDE_CODE=1` runs Claude through Claude Code on the owner's subscription. Deployed, always the API key | A subscription login isn't allowed in a deployed or multi-user app |
 
 ## Pictures
@@ -67,6 +68,8 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 |---|---|
 | A **workflow** makes each edition in steps that save as they finish, so a restart carries on instead of starting over | An edition takes about 3 minutes, too long for a web request |
 | The edition's **status** in the database is the only control. **Stop** sets it; the workflow checks it before each step | First built by saving each workflow's ID, which tied the shared database to a process on one machine |
+| A paper **writing for over 30 minutes**, or still **scheduled** at its print time, is marked failed by the sweep (daily scheduler, printer box checks, Generate) | A lost workflow left its paper stuck forever, and a stuck scheduled paper stopped the reader's next one being scheduled. An edition takes about 3 minutes, so 30 is generous. Without a printer box, a stuck paper waits for the daily scheduler or the next Generate |
+| **One paper at a time:** Generate refuses while a paper is being written, and the database allows one paper per print time | A double-click, a second tab, or the scheduler running while settings are saved, could each pay for two papers |
 | Only emails in `ALLOWED_EMAILS` get editions, by Generate or automatically | Each edition costs money |
 | Every finished edition keeps its PDF online, printed or not | |
 

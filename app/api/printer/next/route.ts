@@ -1,4 +1,5 @@
 import { PRINT_WINDOW_MS, printerOwner } from "@/lib/printer";
+import { sweep } from "@/lib/schedule";
 import { admin } from "@/lib/supabase/admin";
 
 // The printer box asks this every few minutes. Answers with the paper to print, if one is ready, its print time has
@@ -6,6 +7,7 @@ import { admin } from "@/lib/supabase/admin";
 export async function GET(request: Request) {
   const userId = await printerOwner(request);
   if (!userId) return new Response("Unknown printer key", { status: 401 });
+  await sweep(userId); // the box asks every 2 minutes, so a stuck paper is noticed soon
 
   const now = Date.now();
   const db = admin();

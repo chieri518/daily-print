@@ -29,7 +29,7 @@ Requires Node 24 or later.
 4. Under Authentication → URL Configuration, add `http://localhost:3000/auth/callback` and your Vercel URL plus `/auth/callback` to the redirect URLs.
 5. Put your email in `ALLOWED_EMAILS` so you can generate editions.
 6. Birthdays from Google Calendar (optional): in Google Cloud, turn on the **Google Calendar API**, add the `calendar.events.readonly` scope under Data Access, and add `http://localhost:3000/api/google/callback` (and your Vercel URL + `/api/google/callback`) to the OAuth client's redirect URIs. Put the client ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Set the app's publishing status to **In production**; in Testing, Google cancels the access every 7 days.
-7. Automatic printing: set `CRON_SECRET` to a long random value (for example from `openssl rand -hex 32`). Vercel sends it when it runs the daily scheduler, so no one else can trigger it.
+7. Automatic printing: set `CRON_SECRET` to a long random value (for example from `openssl rand -hex 32`). Vercel sends it when it runs the daily scheduler, so no one else can trigger it. Without it, the scheduler refuses every request.
 8. On Vercel, add the same variables: `vercel env add NAME` for each one in `.env.example`.
 
 ## Run it

@@ -79,7 +79,8 @@ stateDiagram-v2
   scheduled --> writing: 20 minutes before the print time
   [*] --> writing: Generate
   writing --> ready: PDF saved
-  writing --> failed: an error
+  writing --> failed: an error, or over 30 minutes
+  scheduled --> failed: still waiting at the print time
   scheduled --> stopped: Cancel
   writing --> stopped: Stop
 ```
@@ -117,6 +118,7 @@ Readers set a **print time** in Customize. Their time zone comes from their brow
 3. **Making it.** The workflow wakes, sets the edition to **writing**, loads the reader's settings as they are by then, and makes the edition as usual.
 4. **Printing.** The printer box asks the printer API every 2 minutes whether there's a paper. It gets one only when the paper is ready, its print time has come, and it's less than an hour late. It downloads the PDF, prints it, and reports **printed** or the error.
 5. **Skipping.** A paper not printed within an hour of its print time is skipped (printer off, out of paper, box offline). The Editions page says what happened: "Prints at 6:30 am", "Printed at 6:31 am", or "Not printed".
+6. **Sweeping up.** A workflow can be lost (for example, `next build` locally) or crash, leaving its paper **writing** or **scheduled** forever, which would also stop the reader's next paper being scheduled. `sweep` in [lib/schedule.ts](../lib/schedule.ts) marks **failed** any paper written for over 30 minutes, or still waiting after its print time. It runs in the daily scheduler (for everyone, before scheduling), each time a printer box checks in (for its reader) and before Generate. A paper made after this for the same edition is thrown away, since the workflow only saves editions that are still **writing**.
 
 **The printer key.** The box proves which reader it belongs to with a secret key, made with **Set up a printer box** in Customize. The key is shown once, inside a setup command to run on the Pi. The app keeps only a scrambled copy (a hash), so the key can't be read back from the database. The Pi saves the key in `/etc/daily-print.conf` and sends it with every request. Making a new key replaces the old one, which stops working.
 

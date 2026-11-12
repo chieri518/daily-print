@@ -8,7 +8,7 @@ import { followedHeadline, type Paper } from "@/lib/editor";
 import { MAX_FOLLOWED, Settings } from "@/lib/settings";
 import { disconnect } from "@/lib/google";
 import { newPrinterKey } from "@/lib/printer";
-import { scheduleNext } from "@/lib/schedule";
+import { scheduleNext, sweep } from "@/lib/schedule";
 import { admin } from "@/lib/supabase/admin";
 import { canGenerate } from "@/lib/allowed";
 import { createClient, getReader, loadSettings } from "@/lib/supabase/server";
@@ -52,6 +52,13 @@ export async function saveSettings(json: string) {
 export async function generate(form: FormData) {
   const reader = await requireReader();
   if (!canGenerate(reader.email)) throw new Error("Your account isn't allowed to generate editions yet.");
+  // One paper at a time: a double-click or a second tab would otherwise pay for two. A stuck one doesn't count.
+  await sweep(reader.id);
+  const { count } = await reader.supabase
+    .from("editions")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "writing");
+  if (count) throw new Error("A paper is already being written. It appears on the Paper page when it's ready.");
   const settings = await loadSettings(reader);
   const { date, day } = today(String(form.get("timeZone")));
   const { data, error } = await reader.supabase

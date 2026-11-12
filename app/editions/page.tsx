@@ -16,6 +16,7 @@ export default async function Editions() {
     .select("id, day, status, stage, error, print_at, printed_at, print_error")
     .order("created_at", { ascending: false });
   if (error) throw error;
+  const writing = editions.some((e) => e.status === "writing");
   const { timeZone } = await loadSettings(reader);
   const time = (at: string) => new Date(at).toLocaleTimeString("en-US", { timeZone, timeStyle: "short" });
   const stop = (id: string, label: string) => (
@@ -36,10 +37,10 @@ export default async function Editions() {
   return (
     <>
       <h1>Editions</h1>
-      {canGenerate(reader.email) ? (
-        <GenerateButton />
-      ) : (
+      {!canGenerate(reader.email) ? (
         <p className="muted">Generating editions is limited to invited readers for now.</p>
+      ) : (
+        !writing && <GenerateButton /> // one paper at a time
       )}
       <ul className="editions">
         {editions?.map((e) => (
@@ -71,7 +72,7 @@ export default async function Editions() {
         ))}
       </ul>
       {editions?.length === 0 && <p className="muted">No editions yet.</p>}
-      {editions?.some((e) => e.status === "writing") && <RefreshWhileWriting />}
+      {writing && <RefreshWhileWriting />}
     </>
   );
 }
