@@ -208,7 +208,15 @@ ${preferences(settings)}`,
 }
 
 // Step 2: write the edition from the notes. The stories and the extras are written at the same time.
-export async function write(settings: Settings, date: string, notes: string, forecast: string, followed: Followed[]) {
+// `known` are the hard terms the reader already knows.
+export async function write(
+  settings: Settings,
+  date: string,
+  notes: string,
+  forecast: string,
+  followed: Followed[],
+  known: string[],
+) {
   const [stories, extras] = await Promise.all([
     ask(
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
@@ -228,7 +236,9 @@ Rules:
 - A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
 - Don't tell the same story in two sections.
 - Write like a good newspaper: clear, concrete and short paragraphs.
-- In each story's terms, list the hard words and acronyms a reader at this reading level may not know, with what they mean in the story. Leave out words and acronyms most readers know (e.g. "TV", "NASA"). Often there are none.
+- In each story's terms, list the hard words and acronyms a reader at this reading level may not know, with what they mean in the story. Leave out words and acronyms most readers know (e.g. "TV", "NASA"). Often there are none.${
+        known.length ? `\n- This reader already knows these, so never list them as terms: ${known.join(", ")}.` : ""
+      }
 ${pictureRule(settings)}
 ${deskRule(settings, followed)}
 ${preferences(settings)}

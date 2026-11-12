@@ -2,6 +2,7 @@
 
 ## Now: the paper prints by itself every morning
 
+0. [ ] **Apply the database migrations:** `npx supabase db push` (the edition layout and known words)
 1. [ ] **Deploy to Vercel:**
    - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`)
    - [ ] Deploy, then add the Vercel URL in Supabase (Authentication → URL Configuration) and in Google Cloud (OAuth origins and redirect URIs)
@@ -37,9 +38,8 @@ Replaces free columns (see DECISIONS.md, Customize page).
 - [ ] Paper page on phones: scale the pages down to the screen width (they are print-sized, so a phone scrolls sideways)
 - [ ] Make a real edition with followed stories and check Your Desk: are the updates right, do they fit its spot, and does the "no news" line read well?
 - [ ] Saved pages from before Your Desk don't have it: the owner and testers drag it in, or use Default pages
-- [ ] Make a real edition and check the hard terms on the Paper page: are the right words picked at each reading level, and do the definitions read well?
+- [ ] Make a real edition and check the hard terms on the Paper page: are the right words picked at each reading level, and do the definitions read well? Does the ✓ work on a phone?
 - [ ] Explain any term: highlight any word on the Paper page to get a short explanation, like a Kindle (hard terms the editor picks are already explained)
-- [ ] Hard terms: an "I know this" button, so a word the reader knows is never explained again
 
 ## Ideas from traditional newspapers
 

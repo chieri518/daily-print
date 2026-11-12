@@ -6,7 +6,7 @@ import { step } from "../lib/log.ts";
 import type { Layout } from "../lib/paper.tsx";
 import type { Puzzles } from "../lib/puzzles.ts";
 import { renderPdf } from "../lib/render.ts";
-import { settingsFor, type Settings } from "../lib/settings.ts";
+import { knownWordsFor, settingsFor, type Settings } from "../lib/settings.ts";
 import { admin } from "../lib/supabase/admin.ts";
 import { today } from "../lib/today.ts";
 import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts";
@@ -26,7 +26,7 @@ export async function makeEdition(id: string, userId: string, settings: Settings
     ]);
     await stillWritingStep(id);
     const forecastText = forecast ? describeForecast(forecast) : "";
-    const { edition, usd } = await writeStep(settings, date, notes.notes, forecastText, followed);
+    const { edition, usd } = await writeStep(settings, userId, date, notes.notes, forecastText, followed);
     await stillWritingStep(id);
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
@@ -91,9 +91,17 @@ async function researchStep(settings: Settings, date: string, followed: Followed
   return step("Researching the news", () => research(settings, date, followed));
 }
 
-async function writeStep(settings: Settings, date: string, notes: string, forecast: string, followed: Followed[]) {
+async function writeStep(
+  settings: Settings,
+  userId: string,
+  date: string,
+  notes: string,
+  forecast: string,
+  followed: Followed[],
+) {
   "use step";
-  return step("Writing the edition", () => write(settings, date, notes, forecast, followed));
+  const known = await knownWordsFor(admin(), userId);
+  return step("Writing the edition", () => write(settings, date, notes, forecast, followed, known));
 }
 
 async function picturesStep(settings: Settings, edition: Edition) {

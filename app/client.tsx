@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { follow, generate } from "./actions";
+import { follow, generate, knowWord } from "./actions";
 import { MAX_FOLLOWED } from "@/lib/settings";
 
 // Sends the browser's time zone so "today" means the reader's today.
@@ -150,24 +150,48 @@ export function FollowButton(props: { edition: string; headline: string; followi
 }
 
 // A hard term's definition, shown while the reader hovers over the term or taps it (terms are marked in lib/paper.tsx).
-// It's drawn outside the pages, since they cut off anything that sticks out of a section.
+// It's drawn outside the pages, since they cut off anything that sticks out of a section. It stays open while the
+// pointer moves onto it, so the reader can press ✓ to say they know the word: then it's never explained again.
 function Definition() {
-  const [tip, setTip] = useState<{ text: string; left: number; top: number } | null>(null);
+  const [tip, setTip] = useState<{ term: string; text: string; left: number; top: number } | null>(null);
   useEffect(() => {
     const show = (e: Event) => {
       const term = (e.target as Element).closest<HTMLElement>(".term");
       if (!term) return;
       const r = term.getBoundingClientRect();
-      setTip({ text: term.dataset.definition!, left: Math.min(r.left, innerWidth - 300), top: r.bottom });
+      const { term: word, definition } = term.dataset;
+      setTip({ term: word!, text: definition!, left: Math.min(r.left, innerWidth - 300), top: r.bottom });
+    };
+    const leave = (e: Event) => {
+      const to = (e as MouseEvent | FocusEvent).relatedTarget;
+      if (!(to instanceof Element && to.closest(".term, .definition"))) setTip(null);
     };
     const hide = () => setTip(null);
-    const events = { mouseover: show, focusin: show, mouseout: hide, focusout: hide, scroll: hide };
+    const events = { mouseover: show, focusin: show, mouseout: leave, focusout: leave, scroll: hide };
     for (const [name, handler] of Object.entries(events)) addEventListener(name, handler, true);
     return () => {
       for (const [name, handler] of Object.entries(events)) removeEventListener(name, handler, true);
     };
   }, []);
-  return tip && <div className="definition" style={{ left: Math.max(tip.left, 8), top: tip.top }}>{tip.text}</div>;
+  if (!tip) return null;
+
+  // Unmarks the word everywhere in this paper at once, then saves it.
+  const know = () => {
+    document.querySelectorAll<HTMLElement>(".term").forEach((el) => {
+      if (el.dataset.term === tip.term) el.classList.remove("term");
+    });
+    setTip(null);
+    knowWord(tip.term);
+  };
+  return (
+    <div className="definition" style={{ left: Math.max(tip.left, 8), top: tip.top }}>
+      <span>{tip.text}</span>
+      {/* Pressing it mustn't take the focus from the term, which would close the definition before the click lands. */}
+      <button onMouseDown={(e) => e.preventDefault()} onClick={know} aria-label="I know this word" title="I know this word">
+        ✓
+      </button>
+    </div>
+  );
 }
 
 // The landing page's masthead: cycles through example paper names, unless the reader prefers less motion.
