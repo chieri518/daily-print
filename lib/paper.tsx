@@ -3,7 +3,16 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Paper, Story } from "./editor.ts";
 import { CrosswordPuzzle, Jumble, Sudoku, Trivia, Weather, WordOfTheDay, WordSearch } from "./paper-features.tsx";
 import type { Puzzles } from "./puzzles.ts";
-import { comicShape, LAYOUTS, MAIN_STORY_WORDS, PAPER_SIZES, TYPEFACES, type Feature, type Settings } from "./settings.ts";
+import {
+  comicShape,
+  LAYOUTS,
+  MAIN_STORY_WORDS,
+  PAPER_SIZES,
+  TYPEFACES,
+  type Feature,
+  type Section,
+  type Settings,
+} from "./settings.ts";
 import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
 import { todayLine } from "./weather.ts";
 
@@ -23,7 +32,10 @@ export type Layout = {
   fit: Fit | null; // null until it has been measured
 };
 
-export function Newspaper({ paper, layout }: { paper: Paper; layout: Layout }) {
+// Draws a story's follow button. Only the Paper page passes it, so the PDF has none.
+export type Follow = (story: Story, section: Section) => ReactNode;
+
+export function Newspaper({ paper, layout, follow }: { paper: Paper; layout: Layout; follow?: Follow }) {
   const { settings, date, fit } = layout;
   const fonts = TYPEFACES[settings.typeface];
   const size = PAPER_SIZES[settings.paperSize];
@@ -65,7 +77,7 @@ export function Newspaper({ paper, layout }: { paper: Paper; layout: Layout }) {
         <section className="page" key={i}>
           <div className="content" style={fit ? { fontSize: `${fit.fontSizes[i]}pt` } : undefined}>
             {i === 0 && <Masthead paper={paper} settings={settings} date={date} />}
-            <Spots paper={paper} layout={layout} page={i} fillersIn={fillersIn} />
+            <Spots paper={paper} layout={layout} page={i} fillersIn={fillersIn} follow={follow} />
           </div>
           <footer>
             <span>
@@ -98,8 +110,14 @@ function Masthead({ paper, settings, date }: { paper: Paper; settings: Settings;
 
 // A page is its layout's grid. Empty spots are taken over by a section next to them (see filledAreas).
 // Each section has a spot id, "page.slot", which the fit uses to place fillers.
-function Spots(props: { paper: Paper; layout: Layout; page: number; fillersIn: (spot: string) => ReactNode }) {
-  const { paper, layout, page: i, fillersIn } = props;
+function Spots(props: {
+  paper: Paper;
+  layout: Layout;
+  page: number;
+  fillersIn: (spot: string) => ReactNode;
+  follow?: Follow;
+}) {
+  const { paper, layout, page: i, fillersIn, follow } = props;
   const { settings, yesterday, pictures, fit } = layout;
   const page = settings.pages[i];
   const space = measure(page, i === 0, settings.paperSize);
@@ -170,9 +188,16 @@ function Spots(props: { paper: Paper; layout: Layout; page: number; fillersIn: (
           features[section.kind](size)
         ) : (
           <>
-            {lead && <Article story={lead} lead={words(size) >= MAIN_STORY_WORDS} figure={figureFor(lead, j)} />}
+            {lead && (
+              <Article
+                story={lead}
+                lead={words(size) >= MAIN_STORY_WORDS}
+                figure={figureFor(lead, j)}
+                button={follow?.(lead, section)}
+              />
+            )}
             {others.map((s, n) => (
-              <Article key={n} story={s} figure={figureFor(s, j)} />
+              <Article key={n} story={s} figure={figureFor(s, j)} button={follow?.(s, section)} />
             ))}
           </>
         )}
@@ -216,9 +241,12 @@ function withTerms(story: Story) {
   );
 }
 
-function Article({ story: s, lead = false, figure }: { story: Story; lead?: boolean; figure: ReactNode }) {
+// `button` is the follow button, on the Paper page. It sits on the rule above the story, so it moves no text.
+function Article(props: { story: Story; lead?: boolean; figure: ReactNode; button?: ReactNode }) {
+  const { story: s, lead = false, figure, button } = props;
   return (
     <article className={lead ? "lead" : ""}>
+      {button}
       {s.label && <p className="label">{s.label}</p>}
       <h2>{s.headline}</h2>
       <p className="deck">{s.deck}</p>
@@ -229,6 +257,28 @@ function Article({ story: s, lead = false, figure }: { story: Story; lead?: bool
         ))}
         {s.sources.length > 0 && <p className="sources">Sources: {hyphenate(s.sources.map((src) => src.name).join(", "))}</p>}
       </div>
+      <StoryTimeline timeline={s.timeline} whyItMatters={s.whyItMatters} />
     </article>
+  );
+}
+
+// Older editions have no timeline; their saved layout and PDF remain valid.
+function StoryTimeline({ timeline, whyItMatters }: { timeline?: Story["timeline"]; whyItMatters?: string }) {
+  if (!timeline || timeline.length < 3) return null;
+  const milestones = timeline.slice(0, 3);
+  return (
+    <aside className="story-timeline" aria-label="Story progression">
+      <p className="timeline-title">How it unfolded</p>
+      <ol>
+        {milestones.map((milestone, i) => (
+          <li key={i}>
+            <span className="timeline-date">{milestone.date}</span>
+            <span className="timeline-stage">{i === 0 ? "Started" : i === milestones.length - 1 ? "Now" : "Changed"}</span>
+            <span>{hyphenate(milestone.event)}</span>
+          </li>
+        ))}
+      </ol>
+      {whyItMatters?.trim() && <p className="timeline-impact"><b>Why it matters</b> {hyphenate(whyItMatters.trim())}</p>}
+    </aside>
   );
 }

@@ -6,6 +6,7 @@ import defaults from "@/paper.json";
 import {
   FEATURES,
   fits,
+  isDesk,
   LAYOUTS,
   MAX_PAGES,
   PAPER_SIZES,
@@ -234,8 +235,9 @@ export function PageBuilder({
           {spot ? `Page ${spot.page + 1}` : "In the list"}
           {room && !section.kind && ` · about ${words(room)} words`}
           {section.kind && ` · ${FEATURES[section.kind].about}`}
+          {isDesk(section) && ` · ${section.about}: press + next to a story on the Paper page to follow it`}
         </span>
-        {!section.kind && (
+        {!section.kind && !isDesk(section) && (
           <SectionForm key={section.title} section={section} onSave={(s) => saveSection(section.title, s)} />
         )}
         {spot ? (

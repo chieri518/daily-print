@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { generate, knowWord } from "./actions";
+import { follow, generate, knowWord } from "./actions";
+import { MAX_FOLLOWED } from "@/lib/settings";
 
 // Sends the browser's time zone so "today" means the reader's today.
 export function GenerateButton() {
@@ -44,6 +45,12 @@ export function PageTurner({ pdf, pages: count, children }: { pdf: string; pages
   const root = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLElement>(null);
   const [page, setPage] = useState(0);
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!note) return;
+    const timer = setTimeout(() => setNote(null), 5000);
+    return () => clearTimeout(timer);
+  }, [note]);
 
   // The strip of pages, how far each page is from its middle, and the page nearest the middle.
   const view = () => {
@@ -95,9 +102,50 @@ export function PageTurner({ pdf, pages: count, children }: { pdf: string; pages
           PDF
         </a>
       </nav>
-      {children}
+      <Notes.Provider value={setNote}>{children}</Notes.Provider>
       <Definition />
+      <p className="note" role="status" hidden={!note}>
+        {note}
+      </p>
     </div>
+  );
+}
+
+// A short note at the bottom of the window for a few seconds, from a follow button: what following a story did. It's
+// drawn outside the pages, like Definition.
+const Notes = createContext<(text: string) => void>(() => {});
+
+// The + next to a story on the Paper page: follows it, so its updates appear in Your Desk. ✓ while following; pressing
+// it again stops. `desk` says whether the reader's paper has Your Desk now.
+export function FollowButton(props: { edition: string; headline: string; following: boolean; desk: boolean }) {
+  const { edition, headline, following, desk } = props;
+  const [shown, setShown] = useOptimistic(following);
+  const [, startTransition] = useTransition();
+  const showNote = useContext(Notes);
+  const toggle = () =>
+    startTransition(async () => {
+      const on = !shown;
+      setShown(on);
+      if (!(await follow(edition, headline, on)))
+        showNote(`You follow ${MAX_FOLLOWED} stories, the most there's room for. Stop following one first.`);
+      else if (on)
+        showNote(
+          desk
+            ? "Following. Updates appear in Your Desk, starting with your next paper."
+            : "Following. Add Your Desk to your paper in Customize to see updates.",
+        );
+    });
+  return (
+    <button
+      type="button"
+      className="follow"
+      aria-pressed={shown}
+      aria-label={shown ? `Stop following: ${headline}` : `Follow: ${headline}`}
+      title={shown ? "Following: updates appear in Your Desk. Press to stop." : "Follow this story"}
+      onClick={toggle}
+    >
+      {shown ? "✓" : "+"}
+    </button>
   );
 }
 

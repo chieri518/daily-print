@@ -20,7 +20,7 @@ flowchart LR
 
   subgraph Supabase
     AUTH["Auth<br/>Google sign-in"]
-    DB[("Database<br/>papers · editions · printers · google_connections")]
+    DB[("Database<br/>papers · editions · printers · google_connections · followed_stories")]
     FILES[("Storage<br/>edition PDFs and pictures")]
   end
 
@@ -54,7 +54,7 @@ flowchart LR
 | **Printer API** | Answers the printer box: the paper to print, if any, and its report afterwards | [app/api/printer](../app/api/printer/), [lib/printer.ts](../lib/printer.ts) |
 | **Printer box** | A Raspberry Pi that checks every 2 minutes, prints the paper and reports back | [public/printer/](../public/printer/), [PRINTER_SETUP.md](PRINTER_SETUP.md) |
 | **Edition pipeline** | The work itself, shared by the workflow and `npm run paper`: research, writing, pictures, puzzles, layout, PDF | [lib/](../lib/) |
-| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
+| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`), the stories you follow (`followed_stories`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
 
 ## Making an edition
 
@@ -63,7 +63,7 @@ Pressing **Generate** adds a row to `editions` with status **writing**, starts t
 ```mermaid
 flowchart LR
   A["Forecast<br/>Open-Meteo"] --> C
-  B["Research<br/>Claude, one call per section, all at once"] --> C["Write<br/>stories (Opus) + extras (Sonnet), at once"]
+  B["Research<br/>Claude, one call per section, all at once<br/>Your Desk: the followed stories"] --> C["Write<br/>stories (Opus) + extras (Sonnet), at once"]
   C --> D["Pictures<br/>illustration + comic, at once"]
   D --> E["Yesterday's puzzles<br/>+ birthdays"]
   E --> F["Print<br/>puzzles · layout · PDF · upload"]
@@ -71,7 +71,7 @@ flowchart LR
 
 Before each costly step, the workflow checks that the edition is still **writing**. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with the error.
 
-The paper is drawn by React components ([lib/paper.tsx](../lib/paper.tsx)) with one stylesheet ([lib/paper-css.ts](../lib/paper-css.ts), scoped to `.paper`). The print step draws them in Chromium and measures the **fit**: each page's font size after shrinking to fit, which section each filler went into, and the comic's height. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. Hard terms the editor picked are wrapped in `.term` spans; only the site's stylesheet underlines them, and the Paper page shows their definitions. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
+The paper is drawn by React components ([lib/paper.tsx](../lib/paper.tsx)) with one stylesheet ([lib/paper-css.ts](../lib/paper-css.ts), scoped to `.paper`). The print step draws them in Chromium and measures the **fit**: each page's font size after shrinking to fit, which section each filler went into, and the comic's height. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. Hard terms the editor picked are wrapped in `.term` spans; only the site's stylesheet underlines them, and the Paper page shows their definitions. The Paper page also passes `Newspaper` a **follow button** for each story (`app/client.tsx`), which the PDF never gets: it sits on the rule above the story, positioned so it moves no text. Following saves the story's headline and deck in `followed_stories`; the next edition's research looks up what's new on each, and the editor writes an update on each in **Your Desk**, marked with the headline it `follows`. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
 
 ```mermaid
 stateDiagram-v2

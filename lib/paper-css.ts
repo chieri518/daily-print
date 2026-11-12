@@ -41,6 +41,24 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .body p + p { text-indent: 1em; }
 .body .sources { text-indent: 0; font-size: 0.8em; font-style: italic; margin-top: 0.3em; }
 
+/* A compact chronology below each news story, shared by screen and print. */
+.story-timeline { margin-top: 0.7em; padding-top: 0.45em; border-top: 1px solid #999; break-inside: avoid; }
+.timeline-title { font-size: 0.65em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.55em; }
+.story-timeline ol { display: flex; list-style: none; padding: 0; }
+.story-timeline li { flex: 1; min-width: 0; position: relative; border-top: 1px solid #999; padding: 0.65em 0.8em 0 0; font-size: 0.75em; line-height: 1.3; overflow-wrap: anywhere; }
+.story-timeline li::before { content: ""; position: absolute; top: -0.25em; left: 0; width: 0.5em; height: 0.5em; border: 1px solid #000; border-radius: 50%; background: #fff; }
+.story-timeline li:last-child::before { background: #000; }
+.timeline-date { display: block; font-weight: bold; margin-bottom: 0.2em; }
+.timeline-stage { display: block; font-size: 0.85em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2em; }
+.timeline-impact { border-top: 1px solid #ddd; margin-top: 0.35em; padding-top: 0.35em; font-size: 0.72em; line-height: 1.3; }
+.timeline-impact b { text-transform: uppercase; letter-spacing: 0.04em; }
+@container (max-width: 2.5in) {
+  .story-timeline ol { display: block; }
+  .story-timeline li { border-top: none; border-left: 1px solid #999; padding: 0 0 0.65em 1em; }
+  .story-timeline li::before { top: 0.35em; left: -0.3em; }
+  .story-timeline li:last-child { padding-bottom: 0; }
+}
+
 .small { font-size: 0.75em; }
 
 /* Weather */

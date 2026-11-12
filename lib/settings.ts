@@ -203,6 +203,15 @@ export type Feature = keyof typeof FEATURES;
 export type Page = z.infer<typeof Page>;
 export type Settings = z.infer<typeof Settings>;
 
+// Updates on the stories the reader follows with + on the Paper page. A section of stories like any other, except the
+// editor researches the followed stories instead of `about`.
+export const YOUR_DESK: Section = { title: "Your Desk", about: "updates on the stories you follow" };
+export const isDesk = (section: Section) => section.title === YOUR_DESK.title; // ready-made sections keep their name
+export const hasDesk = (settings: Settings) => settings.pages.some((p) => p.slots.some((s) => s && isDesk(s)));
+
+// The most stories a reader can follow, so Your Desk has room for an update on each.
+export const MAX_FOLLOWED = 5;
+
 // Ready-made sections. Readers can also make their own.
 export const PRESET_SECTIONS: Section[] = [
   { title: "Top Stories", about: "the most important stories of the day, from any topic" },
@@ -215,6 +224,7 @@ export const PRESET_SECTIONS: Section[] = [
   { title: "Culture", about: "arts, books, film and music" },
   { title: "Opinion", about: "an editorial written by the editor about a story in this edition" },
   { title: "On This Day", about: "a short history piece about something that happened on this date" },
+  YOUR_DESK,
   ...Object.entries(FEATURES).map(([kind, f]) => ({ title: f.title, about: f.about, kind: kind as Feature })),
 ];
 

@@ -1,7 +1,16 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
 import { makePuzzles, type Puzzles } from "./puzzles.ts";
-import { FEATURES, MAIN_STORY_WORDS, READING_LEVELS, TONES, type Section, type Settings } from "./settings.ts";
+import {
+  FEATURES,
+  hasDesk,
+  isDesk,
+  MAIN_STORY_WORDS,
+  READING_LEVELS,
+  TONES,
+  type Section,
+  type Settings,
+} from "./settings.ts";
 import { illustratedSpot, measure, pictureWords, words } from "./space.ts";
 import type { Forecast } from "./weather.ts";
 
@@ -11,6 +20,14 @@ const Story = z.object({
   deck: z.string().describe("One-sentence subheadline"),
   paragraphs: z.array(z.string()),
   sources: z.array(z.object({ name: z.string(), url: z.string() })),
+  timeline: z
+    .array(z.object({
+      date: z.string().describe('Short, verified date label, including the year when needed, e.g. "Nov 8"'),
+      event: z.string().describe("One development in at most 10 words"),
+    }))
+    .max(3)
+    .describe("Exactly 3 sourced milestones, oldest first, or an empty array when fewer than 3 are verified"),
+  whyItMatters: z.string().describe("A fresh consequence in at most 12 words, only if the story does not already explain it. Empty otherwise"),
   terms: z
     .array(
       z.object({
@@ -19,6 +36,9 @@ const Story = z.object({
       }),
     )
     .describe("Hard words and acronyms in the story that this reader may not know, explained on the Paper page"),
+  follows: z
+    .string()
+    .describe("In Your Desk only: the headline of the followed story this updates, exactly as listed. Empty elsewhere"),
 });
 
 // What the editor writes: the stories, and the picture that goes with one of them.
@@ -86,6 +106,16 @@ const Extras = z.object({
 export type Story = z.infer<typeof Story>;
 export type Edition = z.infer<typeof Stories> & z.infer<typeof Extras>;
 
+// A story the reader follows from the Paper page, and the day (YYYY-MM-DD) they started. Its updates go in Your Desk.
+export type Followed = { headline: string; deck: string; since: string };
+
+// The followed story a story is about: an update in Your Desk is about the story it updates, any other about itself.
+// Editions made before following have no `follows`.
+export const followedHeadline = (story: Story) => story.follows || story.headline;
+
+const listFollowed = (followed: Followed[]) =>
+  followed.map((f) => `- "${f.headline}": ${f.deck} (followed since ${f.since})`).join("\n");
+
 // Everything that goes into a printed edition. Saved with the edition, so tomorrow's paper can print the answers.
 // Birthdays are names from the reader's Google Calendar; they never go to Claude.
 export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles; birthdays: string[] };
@@ -109,10 +139,11 @@ function pagePlan(settings: Settings) {
       const lines = page.slots.flatMap((s, j) => {
         if (!s) return [];
         if (s.kind) return [`${FEATURES[s.kind].title}. Made automatically: leave its stories empty.`];
-        const fit = words(space[j]!);
+        // Leave room for chronology rules, dates and dots as well as story text.
+        const fit = Math.floor(words(space[j]!) * 0.75 / 10) * 10;
         const size =
           i === 0 && j === illustrated
-            ? `About ${fit - pictureWords(space[j]!.width)} words with the illustration, or ${fit} without it.`
+            ? `About ${Math.max(0, fit - pictureWords(space[j]!.width))} words with the illustration, or ${fit} without it.`
             : `About ${fit} words.`;
         return [`${s.title} (${s.about}). ${size}`];
       });
@@ -142,20 +173,35 @@ function preferences(settings: Settings) {
     .join("\n");
 }
 
+// Your Desk's rule for the editor: an update on each followed story, or a note on how to follow one.
+function deskRule(settings: Settings, followed: Followed[]) {
+  if (!hasDesk(settings)) return "";
+  if (!followed.length)
+    return `- Your Desk: the reader follows no stories yet. Write one short note labeled "From the editor", with no sources, saying that pressing + next to a story on the Paper page follows it, and its updates appear here.`;
+  return `- Your Desk, whatever its size, holds one short update for each story the reader follows, the most news first, with "follows" set to the followed story's headline exactly as listed. A story with no news in the notes gets a short headline and one sentence saying so. News about a followed story goes in Your Desk, not in another section. The followed stories:
+${listFollowed(followed)}`;
+}
+
 // Step 1: research today's news with web search: one Claude call per section, in parallel. Returns notes, not articles.
-export async function research(settings: Settings, date: string) {
+// Your Desk researches the stories the reader follows, if any.
+export async function research(settings: Settings, date: string, followed: Followed[]) {
   const sections = storySections(settings);
   const results = await Promise.all(
-    sections.map((s) =>
-      ask(
+    sections.map((s) => {
+      if (isDesk(s) && !followed.length) return { text: "The reader follows no stories yet.", usd: 0 };
+      const task = isDesk(s)
+        ? `Find what's new in the last 24 hours on each story the reader follows, or say there's nothing new:\n${listFollowed(followed)}`
+        : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).`;
+      return ask(
         `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
-Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).
+${task}
 ${s.sources?.length ? `Prefer these sources: ${s.sources.join(", ")}.` : ""}
 For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: a few searches are enough.
+Include up to 3 dated milestones showing how each story developed, from earlier background to the latest news. Only include dates and events verified by the sources; do not invent history or future developments.
 ${preferences(settings)}`,
         { label: `Research: ${s.title}`, search: true },
-      ),
-    ),
+      );
+    }),
   );
   const notes = results.map((r, k) => `## ${sections[k].title}\n${r.text}`).join("\n\n");
   return { notes, usd: results.reduce((sum, r) => sum + r.usd, 0) };
@@ -163,7 +209,14 @@ ${preferences(settings)}`,
 
 // Step 2: write the edition from the notes. The stories and the extras are written at the same time.
 // `known` are the hard terms the reader already knows.
-export async function write(settings: Settings, date: string, notes: string, forecast: string, known: string[]) {
+export async function write(
+  settings: Settings,
+  date: string,
+  notes: string,
+  forecast: string,
+  followed: Followed[],
+  known: string[],
+) {
   const [stories, extras] = await Promise.all([
     ask(
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
@@ -175,6 +228,9 @@ ${pagePlan(settings)}
 Rules:
 - Write in English. Tone: ${TONES[settings.tone].guide}. Reading level: ${READING_LEVELS[settings.readingLevel]}.
 - News stories must only use facts from the notes, and must list their sources.
+- Add a compact timeline to a news story only when the notes verify at least 3 distinct, dated developments in chronological order: what started the story, a meaningful change, and its current status. End with what is known now, without repeating the headline. Each event is at most 10 words. Use exactly 3 milestones or an empty array; never include a 2-event timeline. Use an empty array for editorials and other non-news pieces. Never invent dates or predictions.
+- Fill whyItMatters with one sourced, concrete consequence of this development, at most 12 words, only when the timeline has 3 events and the article does not already explain it. Otherwise leave it empty. It is printed beneath the timeline and counts toward the section's space.
+- Timeline text counts toward the section's word limit. Reserve roughly 0.7 inches of section height for each timeline by shortening the article body; allow more room in narrow sections. Keep timelines concise so they fit below the story.
 - Pieces you write yourself, such as editorials and analysis, must say so in their label (e.g. "Editorial").
 - The word counts are limits: the paper is printed, and text that doesn't fit is cut off. Stay at or under them.
 - A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
@@ -184,6 +240,7 @@ Rules:
         known.length ? `\n- This reader already knows these, so never list them as terms: ${known.join(", ")}.` : ""
       }
 ${pictureRule(settings)}
+${deskRule(settings, followed)}
 ${preferences(settings)}
 
 Research notes:
