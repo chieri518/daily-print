@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GenerateButton, RefreshWhileWriting } from "../client";
 import { stopEdition } from "../actions";
 import { canGenerate } from "@/lib/allowed";
 import { PRINT_WINDOW_MS } from "@/lib/printer";
 import { getReader, loadSettings } from "@/lib/supabase/server";
+import { fullDate } from "@/lib/today";
 
 export default async function Editions() {
   const reader = await getReader();
@@ -11,7 +13,7 @@ export default async function Editions() {
 
   const { data: editions, error } = await reader.supabase
     .from("editions")
-    .select("id, day, status, print_at, printed_at, print_error")
+    .select("id, day, status, stage, error, print_at, printed_at, print_error")
     .order("created_at", { ascending: false });
   if (error) throw error;
   const { timeZone } = await loadSettings(reader);
@@ -42,23 +44,27 @@ export default async function Editions() {
       <ul className="editions">
         {editions?.map((e) => (
           <li key={e.id}>
-            <span>{new Date(`${e.day}T12:00`).toLocaleDateString("en-US", { dateStyle: "full" })}</span>
+            {e.status === "ready" ? (
+              <Link href={`/?edition=${e.id}`}>{fullDate(e.day)}</Link>
+            ) : (
+              <span>{fullDate(e.day)}</span>
+            )}
             <span className="muted">
               {e.status === "scheduled" && (
                 <>
                   Scheduled: written before {time(e.print_at!)} {stop(e.id, "Cancel")}
                 </>
               )}
-              {e.status === "writing" && <>Writing… (a few minutes) {stop(e.id, "Stop")}</>}
+              {e.status === "writing" && <>{e.stage ?? "Starting"}… (a few minutes) {stop(e.id, "Stop")}</>}
               {e.status === "ready" && (
                 <>
                   {printStatus(e)}{" "}
                   <a href={`/editions/${e.id}`} target="_blank">
-                    Read PDF
+                    PDF
                   </a>
                 </>
               )}
-              {e.status === "failed" && "Failed"}
+              {e.status === "failed" && `Failed: ${e.error ?? "no reason was saved"}`}
               {e.status === "stopped" && "Stopped"}
             </span>
           </li>

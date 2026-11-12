@@ -2,7 +2,7 @@
 
 ## Now: the paper prints by itself every morning
 
-0. [ ] **Apply the database migrations:** `npx supabase db push` (the edition layout and known words)
+0. [ ] **Apply the database migrations:** `npx supabase db push` (followed stories and the edition stage). The Paper and Editions pages fail until the stage is applied
 1. [ ] **Deploy to Vercel:**
    - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`)
    - [ ] Deploy, then add the Vercel URL in Supabase (Authentication → URL Configuration) and in Google Cloud (OAuth origins and redirect URIs)
@@ -10,17 +10,7 @@
 3. [ ] **Point the printer box at Vercel:** in the deployed app, make a new printer key and run its command on the Pi
 4. [ ] Watch the first few mornings
 
-## Next: ready-made layouts
-
-Replaces free columns (see DECISIONS.md, Customize page).
-
-- [ ] Make a real edition and check on paper: gaps, word counts, fillers, the vertical comic
-
-## From the code review
-
-- [ ] Not a bug today: a feature's fit is only checked when it's placed, but no feature fits on one paper size and not the other. Check again after tuning the sizes in `FEATURES` (see Soon), since saved pages could then hold a feature that no longer fits
-
-## Soon: quality
+## Quality
 
 - [ ] Tune the estimates in `lib/space.ts` (words per square inch, puzzle heights) against real editions
 - [ ] Add the pictures' cost to each edition's cost
@@ -28,18 +18,16 @@ Replaces free columns (see DECISIONS.md, Customize page).
 
 ## Later
 
-- [ ] Editions page: a front-page thumbnail for each edition, the reason a paper failed, and Try again
+- [ ] Editions page: a front-page thumbnail for each edition
+- [ ] Turn failure reasons into plain words: they are the raw error messages for now (fine for the owner and testers)
 - [ ] Tell readers in Customize when automatic papers aren't available to them (not in `ALLOWED_EMAILS`)
 - [ ] Printer box: pairing with a code instead of a key; printing a paper made with Generate; telling the reader when a paper was skipped
 - [ ] Sudoku difficulty as a setting
 - [ ] Feedback on stories that shapes future editions
-- [ ] Spanish
 - [ ] Page-turn viewer in the browser
 - [ ] Paper page on phones: scale the pages down to the screen width (they are print-sized, so a phone scrolls sideways)
 - [ ] Make a real edition with followed stories and check Your Desk: are the updates right, do they fit its spot, and does the "no news" line read well?
 - [ ] Saved pages from before Your Desk don't have it: the owner and testers drag it in, or use Default pages
-- [ ] Make a real edition and check the hard terms on the Paper page: are the right words picked at each reading level, and do the definitions read well? Does the ✓ work on a phone?
-- [ ] Explain any term: highlight any word on the Paper page to get a short explanation, like a Kindle (hard terms the editor picks are already explained)
 
 ## Ideas from traditional newspapers
 

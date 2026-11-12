@@ -18,22 +18,23 @@ import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts"
 export async function makeEdition(id: string, userId: string, settings: Settings, date: string, day: string) {
   "use workflow";
   try {
-    await stillWritingStep(id);
+    await stageStep(id, "Researching the news");
     const followed = await followedStep(userId);
     const [forecast, notes] = await Promise.all([
       forecastStep(settings.location, settings.temperature),
       researchStep(settings, date, followed),
     ]);
-    await stillWritingStep(id);
+    await stageStep(id, "Writing the stories");
     const forecastText = forecast ? describeForecast(forecast) : "";
     const { edition, usd } = await writeStep(settings, userId, date, notes.notes, forecastText, followed);
-    await stillWritingStep(id);
+    await stageStep(id, "Drawing the pictures and printing");
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
     const names = await birthdaysStep(userId, day);
     await printStep(id, userId, settings, date, { edition, forecast, images, yesterday, names }, notes.usd + usd);
   } catch (error) {
-    await failStep(id, String(error));
+    // Errors from Supabase are plain objects, so String() alone would save "[object Object]".
+    await failStep(id, (error as { message?: string })?.message ?? String(error));
   }
 }
 
@@ -61,12 +62,18 @@ async function wakeStep(id: string, userId: string, printAt: string) {
   return { settings, ...today(settings.timeZone, new Date(printAt)) };
 }
 
-// Quits the workflow if the reader stopped this edition. A step already running when they press Stop still finishes.
-async function stillWritingStep(id: string) {
+// Notes what the edition is doing now, for the reader to see, and quits the workflow if the reader stopped it.
+// One query does both. A step already running when they press Stop still finishes.
+async function stageStep(id: string, stage: string) {
   "use step";
-  const { data, error } = await admin().from("editions").select("status").eq("id", id).single();
+  const { data, error } = await admin()
+    .from("editions")
+    .update({ stage })
+    .eq("id", id)
+    .eq("status", "writing")
+    .select("id");
   if (error) throw error;
-  if (data.status !== "writing") throw new FatalError("Stopped by the reader");
+  if (!data.length) throw new FatalError("Stopped by the reader");
 }
 
 async function forecastStep(location: string, temperature: Settings["temperature"]) {
