@@ -43,7 +43,7 @@ Requires Node 24 or later.
 1. Apply the database changes: `npx supabase db push`.
 2. Run the app with `USE_CLAUDE_CODE=1 npm run dev` (free on your Claude subscription), and keep the Mac awake.
 3. In Customize, set the print time to about 25 minutes from now, and Save. The Editions page shows the paper as **Scheduled**. It's written 20 minutes before the print time.
-4. Set up the printer box (see [PRINTER_SETUP.md](docs/PRINTER_SETUP.md), step 6), using your Mac's address.
+4. Set up a printer box: this Mac, or a Raspberry Pi using your Mac's address (see [PRINTER_SETUP.md](docs/PRINTER_SETUP.md)).
 5. To run the daily scheduler by hand: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron`.
 
 When that works, deploy to Vercel with the API key, so the paper is made while your Mac sleeps.
@@ -76,4 +76,4 @@ When that works, deploy to Vercel with the API key, so the paper is made while y
 | [docs/DECISIONS.md](docs/DECISIONS.md) | How things are decided, by topic, and why |
 | [docs/TODO.md](docs/TODO.md) | What's next, starting with getting the paper to print every morning |
 | [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) | Unknowns still to resolve |
-| [docs/PRINTER_SETUP.md](docs/PRINTER_SETUP.md) | How to set up the Raspberry Pi printer box |
+| [docs/PRINTER_SETUP.md](docs/PRINTER_SETUP.md) | How to print on your own printer: from the browser, or with a printer box on a Mac or Raspberry Pi, and its printer settings |

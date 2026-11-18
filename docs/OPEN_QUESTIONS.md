@@ -8,7 +8,7 @@ Unknowns still to resolve. When one is answered, move the answer to [DECISIONS.m
 - **Content safety:** are any topics excluded by default (for example graphic violence)? How should paywalled sources be handled?
 - **Yesterday's answers:** they come from the reader's most recent earlier edition, which may be several days old, or from earlier the same day. Is that OK?
 - **Missed papers:** a paper not printed within an hour is skipped. Should the reader be told?
-- **Paper use:** a 4-page edition uses 4 sheets. Should papers fit on fewer pages?
+- **Paper use:** a 4-page edition uses 4 sheets (2 with `DOUBLE_SIDED`). Should papers fit on fewer pages?
 - **Followed stories:** they're kept until the reader stops following them. Should a story with no news for a week or two be dropped, or the reader asked? Is 5 the right limit?
 - **Your Desk without a spot:** a reader who follows stories but has no Your Desk on their pages gets no updates (the Paper page tells them to add it). Should following a story add Your Desk at the end of the paper instead?
 

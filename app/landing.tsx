@@ -40,8 +40,8 @@ export function Landing() {
           The printer box
         </h2>
         <p>
-          A tiny Raspberry Pi next to your printer fetches the paper while you sleep. It&apos;s waiting in the tray when
-          you wake up. No screens before breakfast.
+          A tiny Raspberry Pi or your Mac fetches the paper while you sleep, and prints it on your own printer.
+          It&apos;s waiting in the tray when you wake up. No screens before breakfast.
         </p>
       </section>
 

@@ -23,6 +23,7 @@
 - [ ] Turn failure reasons into plain words: they are the raw error messages for now (fine for the owner and testers)
 - [ ] Tell readers in Customize when automatic papers aren't available to them (not in `ALLOWED_EMAILS`)
 - [ ] Printer box: pairing with a code instead of a key; printing a paper made with Generate; telling the reader when a paper was skipped
+- [ ] Try the Mac printer box and `DOUBLE_SIDED` on real printers (written, untested)
 - [ ] Sudoku difficulty as a setting
 - [ ] Feedback on stories that shapes future editions
 - [ ] Page-turn viewer in the browser

@@ -8,7 +8,7 @@ How Daily Print works today, and what's planned. Decisions behind it are in [DEC
 flowchart LR
   subgraph You["Reader"]
     BROWSER["Browser<br/>landing · Paper · Editions · Customize"]
-    BOX["Printer box<br/>Raspberry Pi + printer"]
+    BOX["Printer box<br/>Mac or Raspberry Pi + printer"]
   end
 
   subgraph App["Next.js app (Vercel, or npm run dev)"]
@@ -52,7 +52,7 @@ flowchart LR
 | **Edition workflow** | Makes one edition from start to finish, in steps (below) | [workflows/edition.ts](../workflows/edition.ts) |
 | **Scheduler** | Schedules each reader's next paper for the printer box | [lib/schedule.ts](../lib/schedule.ts), [app/api/cron](../app/api/cron/route.ts) |
 | **Printer API** | Answers the printer box: the paper to print, if any, and its report afterwards | [app/api/printer](../app/api/printer/), [lib/printer.ts](../lib/printer.ts) |
-| **Printer box** | A Raspberry Pi that checks every 2 minutes, prints the paper and reports back | [public/printer/](../public/printer/), [PRINTER_SETUP.md](PRINTER_SETUP.md) |
+| **Printer box** | A Mac or Raspberry Pi (or other Linux computer) that checks every 2 minutes, prints the paper through CUPS with the owner's printer settings, and reports back | [public/printer/](../public/printer/), [PRINTER_SETUP.md](PRINTER_SETUP.md) |
 | **Edition pipeline** | The work itself, shared by the workflow and `npm run paper`: research, writing, pictures, puzzles, layout, PDF | [lib/](../lib/) |
 | **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`), the stories you follow (`followed_stories`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
 

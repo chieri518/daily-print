@@ -80,10 +80,12 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Papers are made on **Vercel** with the API key | The Pi is too weak, and the owner's computer sleeps |
 | One **print time**, every day, in the reader's time zone | |
 | Each reader's next paper is **scheduled** when they save, and by a Vercel cron job once a day. It sleeps until 20 minutes before the print time | Vercel's free plan runs a cron job only once a day, within an hour |
-| The **printer box** (Raspberry Pi Zero W + HP P1102w over USB, CUPS with the foo2zjs driver) asks every 2 minutes, prints, and reports back | Nothing at home has to accept connections. HP's own driver doesn't run on the Pi Zero |
+| The **printer box** is any always-on Mac or Linux computer (usually a Raspberry Pi) that prints through CUPS. It asks every 2 minutes, prints, and reports back. The owner's is a Pi Zero W + HP P1102w over USB with the foo2zjs driver | Nothing at home has to accept connections. Each reader has their own printer, and CUPS drives nearly all of them. HP's own driver doesn't run on the Pi Zero |
+| **Printer settings** (which printer, double-sided, any other `lp` options) live in `/etc/daily-print.conf` on the box, not in the app. Setting the box up again keeps them | Every printer differs, and owners can change them where the printer is. No app or database changes |
+| To print **whenever you like**, open the PDF and print from the browser. The box only prints the morning paper | Works with any printer, with nothing to set up |
 | The box proves who it belongs to with a **printer key**, shown once in a setup command. Only a hash is stored | Simple for the owner and a few testers |
 | A paper not printed within an hour is **skipped**; a printing error isn't retried | The owner's choice |
-| One side per sheet, so 4 sheets for 4 pages | The P1102w can't print both sides on its own |
+| One side per sheet by default; `DOUBLE_SIDED` in the printer settings turns on both sides | The owner's P1102w can't print both sides on its own; other printers can |
 
 ## Web app and data
 
