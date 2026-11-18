@@ -69,7 +69,7 @@ flowchart LR
   E --> F["Print<br/>puzzles · layout · PDF · upload"]
 ```
 
-Before each costly step, the workflow checks that the edition is still **writing**. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with the error.
+Before each costly step, the workflow checks that the edition is still **writing**, and in the same query saves the step it's starting (`stage`, for example "Researching the news"), which the Paper and Editions pages show. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with the error, which the Editions page shows.
 
 The paper is drawn by React components ([lib/paper.tsx](../lib/paper.tsx)) with one stylesheet ([lib/paper-css.ts](../lib/paper-css.ts), scoped to `.paper`). The print step draws them in Chromium and measures the **fit**: each page's font size after shrinking to fit, which section each filler went into, and the comic's height. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. Hard terms the editor picked are wrapped in `.term` spans; only the site's stylesheet underlines them, and the Paper page shows their definitions. The Paper page also passes `Newspaper` a **follow button** for each story (`app/client.tsx`), which the PDF never gets: it sits on the rule above the story, positioned so it moves no text. Following saves the story's headline and deck in `followed_stories`; the next edition's research looks up what's new on each, and the editor writes an update on each in **Your Desk**, marked with the headline it `follows`. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
 
@@ -79,7 +79,8 @@ stateDiagram-v2
   scheduled --> writing: 20 minutes before the print time
   [*] --> writing: Generate
   writing --> ready: PDF saved
-  writing --> failed: an error
+  writing --> failed: an error, or over 30 minutes
+  scheduled --> failed: still waiting at the print time
   scheduled --> stopped: Cancel
   writing --> stopped: Stop
 ```
@@ -117,6 +118,7 @@ Readers set a **print time** in Customize. Their time zone comes from their brow
 3. **Making it.** The workflow wakes, sets the edition to **writing**, loads the reader's settings as they are by then, and makes the edition as usual.
 4. **Printing.** The printer box asks the printer API every 2 minutes whether there's a paper. It gets one only when the paper is ready, its print time has come, and it's less than an hour late. It downloads the PDF, prints it, and reports **printed** or the error.
 5. **Skipping.** A paper not printed within an hour of its print time is skipped (printer off, out of paper, box offline). The Editions page says what happened: "Prints at 6:30 am", "Printed at 6:31 am", or "Not printed".
+6. **Sweeping up.** A workflow can be lost (for example, `next build` locally) or crash, leaving its paper **writing** or **scheduled** forever, which would also stop the reader's next paper being scheduled. `sweep` in [lib/schedule.ts](../lib/schedule.ts) marks **failed** any paper written for over 30 minutes, or still waiting after its print time. It runs in the daily scheduler (for everyone, before scheduling), each time a printer box checks in (for its reader) and before Generate. A paper made after this for the same edition is thrown away, since the workflow only saves editions that are still **writing**.
 
 **The printer key.** The box proves which reader it belongs to with a secret key, made with **Set up a printer box** in Customize. The key is shown once, inside a setup command to run on the Pi. The app keeps only a scrambled copy (a hash), so the key can't be read back from the database. The Pi saves the key in `/etc/daily-print.conf` and sends it with every request. Making a new key replaces the old one, which stops working.
 

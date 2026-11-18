@@ -17,23 +17,26 @@ import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts"
 // `date` is printed on the masthead; `day` (YYYY-MM-DD) is the same date, for looking up birthdays.
 export async function makeEdition(id: string, userId: string, settings: Settings, date: string, day: string) {
   "use workflow";
+  let stage = "Getting started";
+  const next = (name: string) => stageStep(id, (stage = name));
   try {
-    await stillWritingStep(id);
+    await next("Researching the news");
     const followed = await followedStep(userId);
     const [forecast, notes] = await Promise.all([
       forecastStep(settings.location, settings.temperature),
       researchStep(settings, date, followed),
     ]);
-    await stillWritingStep(id);
+    await next("Writing the stories");
     const forecastText = forecast ? describeForecast(forecast) : "";
     const { edition, usd } = await writeStep(settings, userId, date, notes.notes, forecastText, followed);
-    await stillWritingStep(id);
+    await next("Drawing the pictures and printing");
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
     const names = await birthdaysStep(userId, day);
     await printStep(id, userId, settings, date, { edition, forecast, images, yesterday, names }, notes.usd + usd);
   } catch (error) {
-    await failStep(id, String(error));
+    // Errors from Supabase are plain objects, so String() alone would log "[object Object]".
+    await failStep(id, stage, (error as { message?: string })?.message ?? String(error));
   }
 }
 
@@ -61,12 +64,18 @@ async function wakeStep(id: string, userId: string, printAt: string) {
   return { settings, ...today(settings.timeZone, new Date(printAt)) };
 }
 
-// Quits the workflow if the reader stopped this edition. A step already running when they press Stop still finishes.
-async function stillWritingStep(id: string) {
+// Notes what the edition is doing now, for the reader to see, and quits the workflow if the reader stopped it.
+// One query does both. A step already running when they press Stop still finishes.
+async function stageStep(id: string, stage: string) {
   "use step";
-  const { data, error } = await admin().from("editions").select("status").eq("id", id).single();
+  const { data, error } = await admin()
+    .from("editions")
+    .update({ stage })
+    .eq("id", id)
+    .eq("status", "writing")
+    .select("id");
   if (error) throw error;
-  if (data.status !== "writing") throw new FatalError("Stopped by the reader");
+  if (!data.length) throw new FatalError("Stopped by the reader");
 }
 
 async function forecastStep(location: string, temperature: Settings["temperature"]) {
@@ -178,9 +187,11 @@ async function upload(path: string, body: Uint8Array, contentType: string) {
   if (error) throw error;
 }
 
-async function failStep(id: string, error: string) {
+// The reader sees a plain sentence saying which stage went wrong; the technical error goes to the logs.
+async function failStep(id: string, stage: string, error: string) {
   "use step";
-  await save(id, { status: "failed", error });
+  console.error(`Edition ${id} failed while ${stage.toLowerCase()}: ${error}`);
+  await save(id, { status: "failed", error: `Something went wrong while ${stage.toLowerCase()}. Please try again.` });
 }
 
 // Only finishes editions that are still being written, so one the reader stopped stays stopped.

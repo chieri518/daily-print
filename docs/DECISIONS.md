@@ -19,10 +19,11 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 |---|---|
 | News is **summarized with sources**. Pieces the editor writes itself (editorial, analysis) say so in their label | |
 | **Research:** one Claude call per section, all at once, with up to 6 web searches each | One long call took 3 minutes; this takes about 80 seconds |
+| A section whose research fails twice is **skipped**: the editor writes a one-line "no news today" piece for it. The paper fails only when every section fails | One failed section used to fail the whole paper, and retrying the research step paid again for every section that had worked |
 | **Writing:** two calls at once: the stories (Claude Opus) and the extras (Claude Sonnet, faster): weather tip, puzzle words, quiz, word of the day, comic | About 80 seconds instead of 2 minutes. The extras come from the research notes |
 | Each story's **word limit** comes from the size of its spot in the layout (estimated in `lib/space.ts`). Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off. Fixed boxes with fixed word counts left gaps whenever a story came in short |
 | Tone (straight news, conversational, witty, **Gen Z**) and reading level are settings. Readers can add a **brief to the editor**, sources to trust or avoid, and preferred sources per section | Sources are instructions to Claude, not enforced |
-| Claude calls retry at most once | They cost money |
+| Claude calls retry at most once | They cost money. The exception: when every section's research fails, the research step is retried, so each section is tried up to 4 times. That's most likely an outage, when nothing is paid for |
 | Locally, `USE_CLAUDE_CODE=1` runs Claude through Claude Code on the owner's subscription. Deployed, always the API key | A subscription login isn't allowed in a deployed or multi-user app |
 
 ## Pictures
@@ -67,6 +68,8 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 |---|---|
 | A **workflow** makes each edition in steps that save as they finish, so a restart carries on instead of starting over | An edition takes about 3 minutes, too long for a web request |
 | The edition's **status** in the database is the only control. **Stop** sets it; the workflow checks it before each step | First built by saving each workflow's ID, which tied the shared database to a process on one machine |
+| A paper **writing for over 30 minutes**, or still **scheduled** at its print time, is marked failed by the sweep (daily scheduler, printer box checks, Generate) | A lost workflow left its paper stuck forever, and a stuck scheduled paper stopped the reader's next one being scheduled. An edition takes about 3 minutes, so 30 is generous. Without a printer box, a stuck paper waits for the daily scheduler or the next Generate |
+| **One paper at a time:** Generate refuses while a paper is being written, and the database allows one paper per print time | A double-click, a second tab, or the scheduler running while settings are saved, could each pay for two papers |
 | Only emails in `ALLOWED_EMAILS` get editions, by Generate or automatically | Each edition costs money |
 | Every finished edition keeps its PDF online, printed or not | |
 
@@ -90,6 +93,10 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`, `known_words`, `followed_stories`. Readers only see their own rows | No tables until a feature needs them |
 | A calm, minimal landing page with a sketch of a front page | |
 | The **Paper** page (the home page once signed in) shows the latest paper in the browser, page for page as it prints. It is the main way to read the paper; printing is a bonus | New features will be built on the web view. Replaced the Editions list as the home page |
+| Each paper on the **Editions** page opens on the Paper page (`/?edition=<id>`), with its PDF as a second link | Older papers could only be read as PDFs, without definitions or follow buttons |
+| While a paper is written, the Paper and Editions pages show its **stage** (Researching the news, Writing the stories, Drawing the pictures and printing). A failed paper shows its error | The workflow saves the stage in the query that already checks for Stop, so it costs no extra step or query. Waiting several minutes with no news, and "Failed" with no reason, left the reader guessing |
+| A failed paper shows a **plain sentence** naming the stage that went wrong ("Something went wrong while researching the news. Please try again."). The technical error goes to the logs, not the page | Raw errors (workflow step names, SDK auth messages) meant nothing to readers |
+| No **Try again** button: Generate, at the top of the Editions page, is the way to try again | Each try costs about $1. One button to spend it is enough |
 | The web view and the PDF are drawn by the **same React components and stylesheet**. Printing measures the fit (font sizes, filler spots, comic height) and saves it with the edition, and the Paper page draws with that fit | The two match exactly, and the web view is a real page that features like following a story or explaining terms can build on. Saving a finished-HTML snapshot was tried first, but it can't grow into those features. Papers made before this have only a PDF |
 | Story text is hyphenated in code (soft hyphens, the `hyphen` package), not with the browser's `hyphens: auto` | Each browser hyphenates differently (some not at all), which moved line breaks between the PDF and the web view |
 | **Hard terms** (uncommon words and acronyms) are explained on the Paper page: the first use in each story has a dotted underline, and hovering or tapping it shows a short definition. The editor picks them for the reader's reading level while writing the stories, and nothing changes in print | No extra Claude call. The underline is styled only in the site's stylesheet, so the PDF and its line breaks stay the same. Papers made before this have no terms |

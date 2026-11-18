@@ -1,4 +1,6 @@
 import { FollowButton, GenerateButton, PageTurner, RefreshWhileWriting } from "./client";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Landing } from "./landing";
 import { canGenerate } from "@/lib/allowed";
 import { followedHeadline, type Paper as Edition } from "@/lib/editor";
@@ -6,27 +8,45 @@ import { Newspaper, type Follow, type Layout } from "@/lib/paper";
 import { css } from "@/lib/paper-css";
 import { fontsUrl, hasDesk, isDesk, knownWordsFor, TYPEFACES } from "@/lib/settings";
 import { getReader, loadSettings } from "@/lib/supabase/server";
+import { fullDate } from "@/lib/today";
 
-// The reader's latest paper, drawn by the same components as its PDF, page for page. Signed out, the landing page.
-export default async function Paper() {
+// A reader's paper, drawn by the same components as its PDF, page for page: the latest, or the one chosen on the
+// Editions page (?edition=<id>). Signed out, the landing page.
+export default async function Paper({ searchParams }: { searchParams: Promise<{ edition?: string }> }) {
   const reader = await getReader();
   if (!reader) return <Landing />;
+  const { edition: chosen } = await searchParams;
 
-  const { data: editions, error } = await reader.supabase
-    .from("editions")
-    .select("id, status, content, layout")
-    .in("status", ["ready", "writing"])
-    .order("created_at", { ascending: false });
+  const ready = reader.supabase.from("editions").select("id, day, content, layout").eq("status", "ready");
+  const { data: shown, error } = await (
+    chosen ? ready.eq("id", chosen) : ready.order("created_at", { ascending: false }).limit(1)
+  ).maybeSingle();
   if (error) throw error;
-  const latest = editions.find((e) => e.status === "ready");
-  const writing = editions.some((e) => e.status === "writing") && (
+  const { data: being, error: beingError } = await reader.supabase
+    .from("editions")
+    .select("stage")
+    .eq("status", "writing")
+    .limit(1)
+    .maybeSingle();
+  if (beingError) throw beingError;
+  const writing = being && (
     <>
-      <p className="muted">A new paper is being written. It appears here when it's ready.</p>
+      <p className="muted">
+        A new paper is being written ({being.stage?.toLowerCase() ?? "starting"}). It appears here when it&apos;s ready.
+      </p>
       <RefreshWhileWriting />
     </>
   );
+  // A paper chosen on the Editions page says which day it's from, with the way back to the latest.
+  const older = chosen && shown && (
+    <p className="muted">
+      The paper for {fullDate(shown.day)}.{" "}
+      <Link href="/">Latest paper</Link>
+    </p>
+  );
 
-  if (!latest)
+  if (chosen && !shown) notFound();
+  if (!shown)
     return (
       <>
         <h1>Your paper</h1>
@@ -35,12 +55,13 @@ export default async function Paper() {
       </>
     );
 
-  const pdf = `/editions/${latest.id}`;
-  const layout = latest.layout as Layout | null;
+  const pdf = `/editions/${shown.id}`;
+  const layout = shown.layout as Layout | null;
   if (!layout)
     return (
       <>
         {writing}
+        {older}
         <p className="muted">
           This paper was made before the web view. <a href={pdf}>Read the PDF</a>, or generate a new paper on the
           Editions page.
@@ -65,7 +86,7 @@ export default async function Paper() {
   const follow: Follow = (story, section) =>
     (!isDesk(section) || story.follows) && (
       <FollowButton
-        edition={latest.id}
+        edition={shown.id}
         headline={story.headline}
         following={following.has(followedHeadline(story))}
         desk={desk}
@@ -78,9 +99,10 @@ export default async function Paper() {
         {css}
       </style>
       {writing}
+      {older}
       <PageTurner pdf={pdf} pages={layout.settings.pages.length}>
         <Newspaper
-          paper={withoutKnown(latest.content as Edition, known)}
+          paper={withoutKnown(shown.content as Edition, known)}
           layout={{ ...layout, pictures }}
           follow={follow}
         />

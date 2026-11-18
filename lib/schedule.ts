@@ -49,8 +49,30 @@ export async function scheduleNext(userId: string, settings: Settings) {
     .insert({ user_id: userId, day, status: "scheduled", print_at: printAt })
     .select("id")
     .single();
+  if (error?.code === "23505") return; // scheduled at the same moment by another call (one paper per print time)
   if (error) throw error;
   await start(scheduledEdition, [data.id, userId, printAt]);
+}
+
+// Marks papers that will never finish as failed, so the reader sees why and the next paper can be scheduled: one being
+// written for over 30 minutes (its workflow crashed or was lost), and one still waiting after its print time (the
+// workflow that should have woken it was lost). A paper made with Generate starts writing when it's made; one for the
+// printer box, 20 minutes before its print time. For one reader, or for everyone when `userId` is left out.
+export async function sweep(userId?: string) {
+  const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+  const fail = (status: string, error: string) => {
+    const query = admin().from("editions").update({ status: "failed", error }).eq("status", status);
+    return userId ? query.eq("user_id", userId) : query;
+  };
+  const [writing, waiting] = await Promise.all([
+    // Started over 30 minutes ago: made with Generate before then, or printing over 10 minutes ago (woken 20 before)
+    fail("writing", "It took over 30 minutes, so it was given up.").or(
+      `and(print_at.is.null,created_at.lt.${ago(30)}),print_at.lt.${ago(10)}`,
+    ),
+    fail("scheduled", "It was never started: its scheduled job was lost.").lt("print_at", ago(0)),
+  ]);
+  if (writing.error) throw writing.error;
+  if (waiting.error) throw waiting.error;
 }
 
 // The next time the reader's clock shows their print time.
