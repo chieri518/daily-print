@@ -77,3 +77,7 @@ When that works, deploy to Vercel with the API key, so the paper is made while y
 | [docs/TODO.md](docs/TODO.md) | What's next, starting with getting the paper to print every morning |
 | [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) | Unknowns still to resolve |
 | [docs/PRINTER_SETUP.md](docs/PRINTER_SETUP.md) | How to print on your own printer: from the browser, or with a printer box on a Mac or Raspberry Pi, and its printer settings |
+
+## License
+
+[MIT](LICENSE): use it, change it and share it, keeping the copyright notice.
