@@ -191,4 +191,4 @@ form.inline { display: inline; }
 .printing { display: grid; gap: 0.5rem; }
 .printing .print-time input { width: 9rem; }
 .printing .link { justify-self: start; }
-.printer-key code { display: block; padding: 0.6rem; overflow-wrap: anywhere; font-size: 0.8rem; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.printer-key > code { display: block; padding: 0.6rem; overflow-wrap: anywhere; font-size: 0.8rem; background: color-mix(in srgb, var(--ink) 6%, transparent); }

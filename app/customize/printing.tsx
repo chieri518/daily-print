@@ -19,8 +19,9 @@ export function Printing({
     <div className="wide printing">
       <b>Printing</b>
       <p className="muted">
-        Your printer box prints a fresh paper every morning at this time. Leave it empty for no automatic paper. A paper
-        that can&apos;t print within an hour of this time is skipped.
+        Your printer box, a Mac or Raspberry Pi connected to your printer, prints a fresh paper every morning at this
+        time. Leave it empty for no automatic paper. A paper that can&apos;t print within an hour of this time is skipped.
+        To print whenever you like, open any paper&apos;s PDF and print it from your browser.
       </p>
       <label className="print-time">
         Print time
@@ -37,10 +38,17 @@ export function Printing({
       </p>
       {key ? (
         <div className="printer-key">
-          <p>On your Raspberry Pi, run this once. It sets the box up with your new key, which is shown only now:</p>
+          <p>
+            On your printer box (a Mac or Raspberry Pi), run this once in Terminal. It sets the box up with your new key,
+            which is shown only now:
+          </p>
           <code>
             curl -fsSL {location.origin}/printer/install.sh | sudo bash -s -- {location.origin} {key}
           </code>
+          <p className="muted">
+            Then choose the printer, double-sided printing and other options in <code>/etc/daily-print.conf</code> on the
+            box.
+          </p>
         </div>
       ) : (
         <button
