@@ -38,7 +38,9 @@ export default async function Editions() {
     <>
       <h1>Editions</h1>
       {!canGenerate(reader.email) ? (
-        <p className="muted">Generating editions is limited to invited readers for now.</p>
+        <p className="muted">
+          Generating editions is limited to invited readers for now. See <Link href="/">sample papers</Link>.
+        </p>
       ) : (
         !writing && <GenerateButton /> // one paper at a time
       )}

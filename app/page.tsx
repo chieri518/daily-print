@@ -51,7 +51,7 @@ export default async function Paper({ searchParams }: { searchParams: Promise<{ 
       <>
         <h1>Your paper</h1>
         {writing || <p className="muted">No paper yet.</p>}
-        {!writing && canGenerate(reader.email) && <GenerateButton />}
+        {!writing && (canGenerate(reader.email) ? <GenerateButton /> : <Samples />)}
       </>
     );
 
@@ -107,6 +107,37 @@ export default async function Paper({ searchParams }: { searchParams: Promise<{ 
           follow={follow}
         />
       </PageTurner>
+    </>
+  );
+}
+
+// Papers made for five sample readers, in public/samples. Readers who can't make papers yet see these instead of an
+// empty page; they cost nothing to show.
+const SAMPLES = [
+  ["1-the-morning-edition", "The Morning Edition"],
+  ["2-the-kitchen-table", "The Kitchen Table"],
+  ["3-the-valley-ledger", "The Valley Ledger"],
+  ["4-the-daily-vibe-check-gen-z", "The Daily Vibe Check"],
+  ["5-the-camden-courier", "The Camden Courier"],
+];
+
+function Samples() {
+  const pdf = (file: string) => `/samples/${file}.pdf`;
+  return (
+    <>
+      <p className="muted">
+        Making papers is limited to invited readers for now. Meanwhile, here are papers Daily Print made for five
+        sample readers:{" "}
+        {SAMPLES.map(([file, name], i) => (
+          <span key={file}>
+            {i > 0 && " · "}
+            <a href={pdf(file)} target="_blank">
+              {name}
+            </a>
+          </span>
+        ))}
+      </p>
+      <iframe className="sample" src={pdf(SAMPLES[0][0])} title={`A sample paper: ${SAMPLES[0][1]}`} />
     </>
   );
 }

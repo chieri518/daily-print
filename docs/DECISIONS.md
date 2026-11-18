@@ -92,6 +92,8 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Decision | Why |
 |---|---|
 | Next.js on Vercel. Supabase for sign-in (Google only), the database and the PDFs | |
+| `vercel.json` says the framework is **Next.js** | The project was set to "Other", so Vercel served only `public/` and every page was a 404. In the repo, it's right for anyone who deploys their own copy |
+| **One public deployment**, not a separate demo. Anyone can sign in and customize; only `ALLOWED_EMAILS` can make papers. Everyone else sees the five **sample papers** (`public/samples`) on the Paper page | Only invited readers cost money, and one deployment is one thing to keep working. Samples show visitors what they'd get, for free |
 | Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`, `known_words`, `followed_stories`. Readers only see their own rows | No tables until a feature needs them |
 | A calm, minimal landing page with a sketch of a front page | |
 | The **Paper** page (the home page once signed in) shows the latest paper in the browser, page for page as it prints. It is the main way to read the paper; printing is a bonus | New features will be built on the web view. Replaced the Editions list as the home page |

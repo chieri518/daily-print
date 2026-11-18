@@ -5,7 +5,8 @@
 0. [ ] **Apply the database migrations:** `npx supabase db push` (followed stories, the edition stage, and one paper per print time). The Paper and Editions pages fail until the stage is applied
    - [ ] Email the reader when a paper fails or is skipped (needs an email provider)
 1. [ ] **Deploy to Vercel:**
-   - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`)
+   - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`). None are set there yet (2026-11-18)
+   - [ ] Set monthly spending limits with Anthropic and the picture provider (OpenAI or Google)
    - [ ] Deploy, then add the Vercel URL in Supabase (Authentication → URL Configuration) and in Google Cloud (OAuth origins and redirect URIs)
 2. [ ] **Check the first deployed edition:** the PDF renders on Vercel (`@sparticuz/chromium` is untried there), the fonts are right, each step finishes within Vercel's time limit, and what it cost on the API
 3. [ ] **Point the printer box at Vercel:** in the deployed app, make a new printer key and run its command on the Pi

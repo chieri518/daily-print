@@ -109,7 +109,7 @@ If your printer needs a driver, install its package too. Some common ones:
 
 1. On your **computer**, in the daily-print folder, copy a sample paper to the Pi:
    ```
-   scp "sample paper/1-the-morning-edition.pdf" you@dailyprint.local:~/test.pdf
+   scp public/samples/1-the-morning-edition.pdf you@dailyprint.local:~/test.pdf
    ```
 2. On the **Pi**: `lp ~/test.pdf`
 3. `lpstat -o` lists the job until the printer has it all.
