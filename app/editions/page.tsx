@@ -65,7 +65,7 @@ export default async function Editions() {
                   </a>
                 </>
               )}
-              {e.status === "failed" && `Failed: ${e.error ?? "no reason was saved"}`}
+              {e.status === "failed" && `Didn’t finish. ${e.error ?? "Please try again."}`}
               {e.status === "stopped" && "Stopped"}
             </span>
           </li>

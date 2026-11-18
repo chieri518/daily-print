@@ -17,24 +17,26 @@ import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts"
 // `date` is printed on the masthead; `day` (YYYY-MM-DD) is the same date, for looking up birthdays.
 export async function makeEdition(id: string, userId: string, settings: Settings, date: string, day: string) {
   "use workflow";
+  let stage = "Getting started";
+  const next = (name: string) => stageStep(id, (stage = name));
   try {
-    await stageStep(id, "Researching the news");
+    await next("Researching the news");
     const followed = await followedStep(userId);
     const [forecast, notes] = await Promise.all([
       forecastStep(settings.location, settings.temperature),
       researchStep(settings, date, followed),
     ]);
-    await stageStep(id, "Writing the stories");
+    await next("Writing the stories");
     const forecastText = forecast ? describeForecast(forecast) : "";
     const { edition, usd } = await writeStep(settings, userId, date, notes.notes, forecastText, followed);
-    await stageStep(id, "Drawing the pictures and printing");
+    await next("Drawing the pictures and printing");
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
     const names = await birthdaysStep(userId, day);
     await printStep(id, userId, settings, date, { edition, forecast, images, yesterday, names }, notes.usd + usd);
   } catch (error) {
-    // Errors from Supabase are plain objects, so String() alone would save "[object Object]".
-    await failStep(id, (error as { message?: string })?.message ?? String(error));
+    // Errors from Supabase are plain objects, so String() alone would log "[object Object]".
+    await failStep(id, stage, (error as { message?: string })?.message ?? String(error));
   }
 }
 
@@ -185,9 +187,11 @@ async function upload(path: string, body: Uint8Array, contentType: string) {
   if (error) throw error;
 }
 
-async function failStep(id: string, error: string) {
+// The reader sees a plain sentence saying which stage went wrong; the technical error goes to the logs.
+async function failStep(id: string, stage: string, error: string) {
   "use step";
-  await save(id, { status: "failed", error });
+  console.error(`Edition ${id} failed while ${stage.toLowerCase()}: ${error}`);
+  await save(id, { status: "failed", error: `Something went wrong while ${stage.toLowerCase()}. Please try again.` });
 }
 
 // Only finishes editions that are still being written, so one the reader stopped stays stopped.
