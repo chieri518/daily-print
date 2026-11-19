@@ -20,13 +20,15 @@ console.log(
   }. This takes a few minutes...`,
 );
 const started = Date.now();
-// Following stories needs the web app, so Your Desk, if the paper has it, says how to follow one.
+// The paper remembers its reader only in the web app: this command writes as if for a new reader, so Your Desk, if the
+// paper has it, says how to follow a story.
+const reader = { followed: [], known: [], read: [] };
 const [forecast, notes] = await Promise.all([
   step("Getting the forecast", () => getForecast(settings.location, settings.temperature)),
-  step("Researching the news", () => research(settings, date, [])),
+  step("Researching the news", () => research(settings, date, reader)),
 ]);
 const { edition, usd } = await step("Writing the edition", () =>
-  write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "", [], []),
+  write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "", reader),
 );
 const images = await step("Drawing the pictures", () => drawPictures(settings, edition));
 // Birthdays need a Google Calendar connected in the web app, so this command prints without them.
