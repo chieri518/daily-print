@@ -34,7 +34,7 @@ button { font: inherit; cursor: pointer; }
 .paper-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; align-items: center; gap: 1.25rem; padding: 0.5rem 0; background: var(--paper); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
 .paper-bar button { font-size: 1.6rem; line-height: 1; text-decoration: none; }
 .paper-bar a { position: absolute; right: 0; }
-/* Hard terms and their definitions. Only here, not in paper-css.ts, so the PDF has no underlines. */
+/* Hard terms and their definitions. Only here, not in lib/paper/css.ts, so the PDF has no underlines. */
 .term { text-decoration: underline dotted; text-underline-offset: 0.15em; cursor: help; }
 .term:focus { outline: none; }
 /* The transparent top border bridges the gap below the word, so the pointer can reach the ✓ without closing it. */

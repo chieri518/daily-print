@@ -1,15 +1,15 @@
 import { FatalError, sleep } from "workflow";
-import { assemble, research, write, type Edition, type Followed, type Paper } from "../lib/editor.ts";
-import { birthdays } from "../lib/google.ts";
-import { drawPictures } from "../lib/illustrate.ts";
-import { step } from "../lib/log.ts";
-import type { Layout } from "../lib/paper.tsx";
-import type { Puzzles } from "../lib/puzzles.ts";
-import { renderPdf } from "../lib/render.ts";
+import { assemble, research, write, type Edition, type Followed, type Paper } from "../lib/edition/editor.ts";
+import { birthdays } from "../lib/extras/google.ts";
+import { drawPictures } from "../lib/extras/illustrate.ts";
+import { step } from "../lib/edition/log.ts";
+import type { Layout } from "../lib/paper/newspaper.tsx";
+import type { Puzzles } from "../lib/extras/puzzles.ts";
+import { renderPdf } from "../lib/paper/render.ts";
 import { knownWordsFor, settingsFor, type Settings } from "../lib/settings.ts";
 import { admin } from "../lib/supabase/admin.ts";
 import { today } from "../lib/today.ts";
-import { describeForecast, getForecast, type Forecast } from "../lib/weather.ts";
+import { describeForecast, getForecast, type Forecast } from "../lib/extras/weather.ts";
 
 // Writes one edition and saves its PDF. Each step is saved as it finishes, so a crash resumes where it stopped.
 // The edition's status in the database is the only control: before each costly stage the workflow checks that the

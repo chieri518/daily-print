@@ -1,4 +1,4 @@
-// The newspaper's stylesheet, black and white, for paper.tsx. Everything is scoped to .paper, so it can sit inside the
+// The newspaper's stylesheet, black and white, for newspaper.tsx. Everything is scoped to .paper, so it can sit inside the
 // web app without clashing with its styles. Sizes are in em so the fit step can shrink a whole page at once.
 export const css = `
 .paper {
@@ -18,7 +18,7 @@ footer { display: flex; justify-content: space-between; border-top: 1px solid #0
 .illustration.empty { display: flex; align-items: flex-end; border: 1px dashed #000; padding: 0.5em; }
 .illustration figcaption { font-size: 0.8em; font-style: italic; }
 
-/* Spots: each page is its layout's grid of 6 tracks (see LAYOUTS in settings.ts), one section per spot */
+/* Spots: each page is its layout's grid of 6 tracks (see LAYOUTS in lib/settings.ts), one section per spot */
 .spots { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1em 1.5em; }
 .section { display: flex; flex-direction: column; min-height: 0; overflow: hidden; container-type: inline-size; }
 

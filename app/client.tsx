@@ -149,7 +149,7 @@ export function FollowButton(props: { edition: string; headline: string; followi
   );
 }
 
-// A hard term's definition, shown while the reader hovers over the term or taps it (terms are marked in lib/paper.tsx).
+// A hard term's definition, shown while the reader hovers over the term or taps it (terms are marked in lib/paper/newspaper.tsx).
 // It's drawn outside the pages, since they cut off anything that sticks out of a section. It stays open while the
 // pointer moves onto it, so the reader can press ✓ to say they know the word: then it's never explained again.
 function Definition() {

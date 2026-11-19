@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { connectUrl } from "@/lib/google";
+import { connectUrl } from "@/lib/extras/google";
 import { getReader } from "@/lib/supabase/server";
 
 // Sends the reader to Google to allow reading birthdays from their calendar.

@@ -14,7 +14,7 @@
 
 ## Quality
 
-- [ ] Tune the estimates in `lib/space.ts` (words per square inch, puzzle heights) against real editions
+- [ ] Tune the estimates in `lib/edition/space.ts` (words per square inch, puzzle heights) against real editions
 - [ ] Add the pictures' cost to each edition's cost
 - [ ] Compare editions at different costs ($0.10, $0.50, $1) to see how quality changes
 

@@ -1,5 +1,5 @@
-import { PRINT_WINDOW_MS, printerOwner } from "@/lib/printer";
-import { sweep } from "@/lib/schedule";
+import { PRINT_WINDOW_MS, printerOwner } from "@/lib/printing/printer";
+import { sweep } from "@/lib/printing/schedule";
 import { admin } from "@/lib/supabase/admin";
 
 // The printer box asks this every few minutes. Answers with the paper to print, if one is ready, its print time has

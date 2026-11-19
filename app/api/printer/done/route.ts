@@ -1,4 +1,4 @@
-import { printerOwner } from "@/lib/printer";
+import { printerOwner } from "@/lib/printing/printer";
 import { admin } from "@/lib/supabase/admin";
 
 // The printer box reports what happened: { id } when the paper printed, or { id, error } when it didn't.

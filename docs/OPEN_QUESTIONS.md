@@ -10,6 +10,8 @@ Unknowns still to resolve. When one is answered, move the answer to [DECISIONS.m
 - **Missed papers:** a paper not printed within an hour is skipped. Should the reader be told?
 - **Paper use:** a 4-page edition uses 4 sheets (2 with `DOUBLE_SIDED`). Should papers fit on fewer pages?
 - **Followed stories:** they're kept until the reader stops following them. Should a story with no news for a week or two be dropped, or the reader asked? Is 5 the right limit?
+- **Knowledge graph storage:** four tables (entities, mentions, links, threads), or the editions as the history plus one short memory document per reader that the editor rewrites each day?
+- **Followed stories in the graph:** become threads the reader pinned? The likely time is when Your Desk starts closing loose ends, unless the followed stories migration isn't in production yet
 - **Your Desk without a spot:** a reader who follows stories but has no Your Desk on their pages gets no updates (the Paper page tells them to add it). Should following a story add Your Desk at the end of the paper instead?
 
 ## Writing and layout

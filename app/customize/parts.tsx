@@ -2,7 +2,7 @@
 
 // Small pieces of the Customize page.
 import { LAYOUTS, spotCount, type Feature, type Layout } from "@/lib/settings";
-import { gridAreas, spotLetter } from "@/lib/space";
+import { gridAreas, spotLetter } from "@/lib/edition/space";
 
 // A tiny drawing of a layout's spots.
 export function LayoutThumb({ layout }: { layout: Layout }) {

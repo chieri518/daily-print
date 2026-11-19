@@ -1,6 +1,6 @@
 // The printer box signs in with a secret key, made on the Customize page. Only a hash of the key is stored.
 import { createHash, randomBytes } from "node:crypto";
-import { admin } from "./supabase/admin.ts";
+import { admin } from "../supabase/admin.ts";
 
 // A paper not printed within this long after its print time is skipped.
 export const PRINT_WINDOW_MS = 60 * 60 * 1000;
