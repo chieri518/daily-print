@@ -1,4 +1,4 @@
-import { scheduleNext, sweep } from "@/lib/schedule";
+import { scheduleNext, sweep } from "@/lib/printing/schedule";
 import { settingsOrDefaults } from "@/lib/settings";
 import { admin } from "@/lib/supabase/admin";
 

@@ -1,8 +1,8 @@
 import english from "hyphen/en";
 import type { CSSProperties, ReactNode } from "react";
-import type { Paper, Story } from "./editor.ts";
-import { CrosswordPuzzle, Jumble, Sudoku, Trivia, Weather, WordOfTheDay, WordSearch } from "./paper-features.tsx";
-import type { Puzzles } from "./puzzles.ts";
+import type { Paper, Story } from "../edition/editor.ts";
+import { CrosswordPuzzle, Jumble, Sudoku, Trivia, Weather, WordOfTheDay, WordSearch } from "./features.tsx";
+import type { Puzzles } from "../extras/puzzles.ts";
 import {
   comicShape,
   LAYOUTS,
@@ -12,12 +12,12 @@ import {
   type Feature,
   type Section,
   type Settings,
-} from "./settings.ts";
-import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "./space.ts";
-import { todayLine } from "./weather.ts";
+} from "../settings.ts";
+import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "../edition/space.ts";
+import { todayLine } from "../extras/weather.ts";
 
 // The newspaper, one <section> per printed page. The same components draw it on the Paper page and for print
-// (render.ts prints them to a PDF), with the same stylesheet (paper-css.ts, scoped to .paper), so the two always match.
+// (render.ts prints them to a PDF), with the same stylesheet (css.ts, scoped to .paper), so the two always match.
 
 // How the printed pages came out: each page's font size after shrinking to fit, the section each filler went into
 // (or null if it fit nowhere), and the comic's height. render.ts measures it in Chromium.

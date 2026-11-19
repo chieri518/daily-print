@@ -1,14 +1,14 @@
 // Generates today's paper from paper.json without the web app: `npm run paper`.
 // Output goes to editions/YYYY-MM-DD.pdf (+ .json with the text, puzzles and cost).
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { useClaudeCode } from "../lib/claude.ts";
-import { assemble, research, write } from "../lib/editor.ts";
-import { drawPictures } from "../lib/illustrate.ts";
-import { step } from "../lib/log.ts";
-import { renderPdf } from "../lib/render.ts";
+import { useClaudeCode } from "../lib/edition/claude.ts";
+import { assemble, research, write } from "../lib/edition/editor.ts";
+import { drawPictures } from "../lib/extras/illustrate.ts";
+import { step } from "../lib/edition/log.ts";
+import { renderPdf } from "../lib/paper/render.ts";
 import { Settings } from "../lib/settings.ts";
 import { today } from "../lib/today.ts";
-import { describeForecast, getForecast } from "../lib/weather.ts";
+import { describeForecast, getForecast } from "../lib/extras/weather.ts";
 
 const settings = Settings.parse(JSON.parse(readFileSync("paper.json", "utf8")));
 const { date, day } = today();

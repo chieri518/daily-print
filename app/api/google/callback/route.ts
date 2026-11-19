@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { connect } from "@/lib/google";
+import { connect } from "@/lib/extras/google";
 import { admin } from "@/lib/supabase/admin";
 import { getReader } from "@/lib/supabase/server";
 

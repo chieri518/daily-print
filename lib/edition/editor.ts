@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
-import { makePuzzles, type Puzzles } from "./puzzles.ts";
+import { makePuzzles, type Puzzles } from "../extras/puzzles.ts";
 import {
   FEATURES,
   hasDesk,
@@ -10,9 +10,9 @@ import {
   TONES,
   type Section,
   type Settings,
-} from "./settings.ts";
+} from "../settings.ts";
 import { illustratedSpot, measure, pictureWords, words } from "./space.ts";
-import type { Forecast } from "./weather.ts";
+import type { Forecast } from "../extras/weather.ts";
 
 const Story = z.object({
   label: z.string().describe('Small tag above the headline, e.g. "Editorial" or "On This Day". Empty for plain news.'),

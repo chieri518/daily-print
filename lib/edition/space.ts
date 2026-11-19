@@ -1,7 +1,7 @@
 // How big each spot of a page's layout is in print, in inches, and so how many words its stories can have.
 // Used by the editor (word limits), the print layout and the Customize page (previews, and what fits where).
 // Word counts are estimates: text that's too long shrinks to fit, and fillers go in what's left (see render.ts).
-import { LAYOUTS, PAPER_SIZES, type Page, type Settings } from "./settings.ts";
+import { LAYOUTS, PAPER_SIZES, type Page, type Settings } from "../settings.ts";
 
 const MARGIN = 0.5; // around the page
 const FOOTER = 0.25;

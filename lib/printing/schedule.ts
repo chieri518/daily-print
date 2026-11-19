@@ -1,11 +1,11 @@
 // Scheduling the printer box's paper: each reader's next paper is made shortly before their print time.
 // Called once a day by the scheduler (app/api/cron) and whenever a reader saves their settings.
 import { start } from "workflow/api";
-import { canGenerate } from "./allowed.ts";
-import type { Settings } from "./settings.ts";
-import { admin } from "./supabase/admin.ts";
-import { today } from "./today.ts";
-import { scheduledEdition } from "../workflows/edition.ts";
+import { canGenerate } from "../allowed.ts";
+import type { Settings } from "../settings.ts";
+import { admin } from "../supabase/admin.ts";
+import { today } from "../today.ts";
+import { scheduledEdition } from "../../workflows/edition.ts";
 
 // Adds the reader's next paper as a "scheduled" edition, and starts a workflow that sleeps until it's time to make it.
 // A paper waiting for a print time that changed (or was turned off) is cancelled.

@@ -9,6 +9,11 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | A personal **printed newspaper**, not a news feed: it ends, has layout, and is edited | The owner's starting idea |
 | Built for the owner first, with settings stored per reader so it can grow into a product | |
 | **Customization** is what sets it apart: the reader chooses their pages, sections and style | |
+| Two things set it apart: a **news product** unlike others (AI and personalization) and a **media product** unlike others (it ends, and stops attention slop). Personalization serves finishing, never engagement | Feeds personalize to keep you reading; ad-funded competitors can't copy a product that wants you to stop |
+| The goal for the reader: **caught up, and done**. When they finish the paper, they know what matters today and can stop | It decides what the knowledge graph is for: what to leave out, shorten or follow up |
+| **The paper is finite**, and that's the core of the product. Personalization decides what to leave out and how to say more in fewer words, never adds more to read. No streaks, endless "more", or pulls back into the app | Finishing, and feeling caught up, is the point |
+| Made for **one reader**, not a household | |
+| The paper will keep a **knowledge graph per reader** (what they know, care about and have been told), not one shared across readers. How it's stored is still open | Simpler and private, like the other per-reader tables |
 | Black and white, US Letter or A4 | It's printed at home on a laser printer |
 | Budget: about **$1 per edition** | Measure the real cost on the first deployed runs |
 | English only | Chinese and Japanese need other fonts, other puzzles (the crossword and word search use A–Z), translated print labels and new word counts. Spanish alone would be easy; revisit later |
@@ -21,7 +26,7 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | **Research:** one Claude call per section, all at once, with up to 6 web searches each | One long call took 3 minutes; this takes about 80 seconds |
 | A section whose research fails twice is **skipped**: the editor writes a one-line "no news today" piece for it. The paper fails only when every section fails | One failed section used to fail the whole paper, and retrying the research step paid again for every section that had worked |
 | **Writing:** two calls at once: the stories (Claude Opus) and the extras (Claude Sonnet, faster): weather tip, puzzle words, quiz, word of the day, comic | About 80 seconds instead of 2 minutes. The extras come from the research notes |
-| Each story's **word limit** comes from the size of its spot in the layout (estimated in `lib/space.ts`). Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off. Fixed boxes with fixed word counts left gaps whenever a story came in short |
+| Each story's **word limit** comes from the size of its spot in the layout (estimated in `lib/edition/space.ts`). Text that still doesn't fit shrinks, down to 7.5pt | The first real run wrote 40% too much and was cut off. Fixed boxes with fixed word counts left gaps whenever a story came in short |
 | Tone (straight news, conversational, witty, **Gen Z**) and reading level are settings. Readers can add a **brief to the editor**, sources to trust or avoid, and preferred sources per section | Sources are instructions to Claude, not enforced |
 | Claude calls retry at most once | They cost money. The exception: when every section's research fails, the research step is retried, so each section is tried up to 4 times. That's most likely an outage, when nothing is paid for |
 | Locally, `USE_CLAUDE_CODE=1` runs Claude through Claude Code on the owner's subscription. Deployed, always the API key | A subscription login isn't allowed in a deployed or multi-user app |
@@ -92,6 +97,8 @@ How Daily Print is decided today, by topic, and why. When a decision changes, up
 | Decision | Why |
 |---|---|
 | Next.js on Vercel. Supabase for sign-in (Google only), the database and the PDFs | |
+| `lib/` is grouped **by area**: `edition/` (research and writing), `paper/` (drawing it and the PDF), `extras/` (forecast, puzzles, pictures, birthdays), `printing/` (morning papers, printer box). What everything shares stays at its top | 20 flat files were hard to find your way around, for people new to the repo |
+| The README is for **curious visitors and self-hosters**, with screenshots in `docs/images/` | The repo is public so others can run their own copy |
 | `vercel.json` says the framework is **Next.js** | The project was set to "Other", so Vercel served only `public/` and every page was a 404. In the repo, it's right for anyone who deploys their own copy |
 | **One public deployment**, not a separate demo. Anyone can sign in and customize; only `ALLOWED_EMAILS` can make papers. Everyone else sees the five **sample papers** (`public/samples`) on the Paper page | Only invited readers cost money, and one deployment is one thing to keep working. Samples show visitors what they'd get, for free |
 | Tables: `papers` (settings as JSON, checked by code), `editions`, `printers`, `google_connections`, `known_words`, `followed_stories`. Readers only see their own rows | No tables until a feature needs them |

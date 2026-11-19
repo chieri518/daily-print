@@ -4,9 +4,9 @@
 // takes the shape that suits its spot: a 3:1 strip, four panels stacked 1:2, or 2 × 2 (see comicShape).
 // They return null without a key or if drawing fails, so the paper still prints.
 
-import type { Edition } from "./editor.ts";
-import { comicShape, type Settings } from "./settings.ts";
-import { illustratedSpot, measure } from "./space.ts";
+import type { Edition } from "../edition/editor.ts";
+import { comicShape, type Settings } from "../settings.ts";
+import { illustratedSpot, measure } from "../edition/space.ts";
 
 // Draws the pictures this paper needs, at the same time: the illustration if the editor chose a story for it,
 // and the comic if the paper has a Comic Strip section.

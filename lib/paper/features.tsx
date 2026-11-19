@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import type { Paper } from "./editor.ts";
-import type { Crossword, Puzzles } from "./puzzles.ts";
-import { airLabel, condition, type Forecast, type Icon } from "./weather.ts";
+import type { Paper } from "../edition/editor.ts";
+import type { Crossword, Puzzles } from "../extras/puzzles.ts";
+import { airLabel, condition, type Forecast, type Icon } from "../extras/weather.ts";
 
-// The paper's features, drawn by paper.tsx: the forecast, the puzzles (each with yesterday's answers) and the word.
+// The paper's features, drawn by newspaper.tsx: the forecast, the puzzles (each with yesterday's answers) and the word.
 
 // The forecast as printed: one column per day with an icon, today's almanac line, then the tip.
 export function Weather({ forecast: f, tip }: { forecast: Forecast | null; tip: string }) {

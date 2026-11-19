@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { GenerateButton, RefreshWhileWriting } from "../client";
 import { stopEdition } from "../actions";
 import { canGenerate } from "@/lib/allowed";
-import { PRINT_WINDOW_MS } from "@/lib/printer";
+import { PRINT_WINDOW_MS } from "@/lib/printing/printer";
 import { getReader, loadSettings } from "@/lib/supabase/server";
 import { fullDate } from "@/lib/today";
 

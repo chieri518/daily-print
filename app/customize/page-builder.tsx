@@ -18,7 +18,7 @@ import {
   type Page,
   type Section,
 } from "@/lib/settings";
-import { filledAreas, gridAreas, measure, spotIndex, spotLetter, words } from "@/lib/space";
+import { filledAreas, gridAreas, measure, spotIndex, spotLetter, words } from "@/lib/edition/space";
 
 // The pages every new reader starts with.
 const DEFAULT_PAGES = Settings.parse(defaults).pages;

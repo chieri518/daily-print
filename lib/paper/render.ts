@@ -1,10 +1,10 @@
 import chromium from "@sparticuz/chromium";
 import { chromium as playwright, type Page } from "playwright-core";
 import { createElement } from "react";
-import type { Paper } from "./editor.ts";
-import { Newspaper, type Fit, type Layout } from "./paper.tsx";
-import { css } from "./paper-css.ts";
-import { fontsUrl, PAPER_SIZES, TYPEFACES } from "./settings.ts";
+import type { Paper } from "../edition/editor.ts";
+import { Newspaper, type Fit, type Layout } from "./newspaper.tsx";
+import { css } from "./css.ts";
+import { fontsUrl, PAPER_SIZES, TYPEFACES } from "../settings.ts";
 
 // Prints the paper to a PDF. First it draws the pages and measures how they fit: the text on each page shrinks until
 // every section fits, and the fillers go where there's room. Then it prints the pages drawn with that fit, which is
