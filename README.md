@@ -97,7 +97,7 @@ To try the morning paper on your computer before deploying: set the print time a
 |---|---|
 | [app/](app/) | The web app's pages: the landing page, Paper, Editions and Customize ([app/customize/](app/customize/)), plus [actions.ts](app/actions.ts) (what the buttons do) and [api/](app/api/) (the daily scheduler, the printer box and Google) |
 | [workflows/edition.ts](workflows/edition.ts) | Making one edition, step by step: research, write, draw, print the PDF, save |
-| [lib/edition/](lib/edition/) | The editor: researching and writing with Claude ([editor.ts](lib/edition/editor.ts), [claude.ts](lib/edition/claude.ts)), and how many words fit each spot ([space.ts](lib/edition/space.ts)) |
+| [lib/edition/](lib/edition/) | The editor: researching and writing with Claude ([editor.ts](lib/edition/editor.ts), [claude.ts](lib/edition/claude.ts)), what the reader has already read ([recall.ts](lib/edition/recall.ts)), and how many words fit each spot ([space.ts](lib/edition/space.ts)) |
 | [lib/paper/](lib/paper/) | Drawing the newspaper, the same on screen and in the PDF: the components ([newspaper.tsx](lib/paper/newspaper.tsx), [features.tsx](lib/paper/features.tsx)), the stylesheet ([css.ts](lib/paper/css.ts)) and printing the PDF ([render.ts](lib/paper/render.ts)) |
 | [lib/extras/](lib/extras/) | Everything besides the news: the forecast, puzzles, pictures and birthdays |
 | [lib/printing/](lib/printing/) | Scheduling the morning paper and the printer box's keys |

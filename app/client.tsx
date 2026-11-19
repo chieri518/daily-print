@@ -117,8 +117,8 @@ const Notes = createContext<(text: string) => void>(() => {});
 
 // The + next to a story on the Paper page: follows it, so its updates appear in Your Desk. ✓ while following; pressing
 // it again stops. `desk` says whether the reader's paper has Your Desk now.
-export function FollowButton(props: { edition: string; headline: string; following: boolean; desk: boolean }) {
-  const { edition, headline, following, desk } = props;
+export function FollowButton(props: { edition: string; id: string; headline: string; following: boolean; desk: boolean }) {
+  const { edition, id, headline, following, desk } = props;
   const [shown, setShown] = useOptimistic(following);
   const [, startTransition] = useTransition();
   const showNote = useContext(Notes);
@@ -126,7 +126,7 @@ export function FollowButton(props: { edition: string; headline: string; followi
     startTransition(async () => {
       const on = !shown;
       setShown(on);
-      if (!(await follow(edition, headline, on)))
+      if (!(await follow(edition, id, on)))
         showNote(`You follow ${MAX_FOLLOWED} stories, the most there's room for. Stop following one first.`);
       else if (on)
         showNote(

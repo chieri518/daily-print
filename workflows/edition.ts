@@ -1,5 +1,6 @@
 import { FatalError, sleep } from "workflow";
-import { assemble, research, write, type Edition, type Followed, type Paper } from "../lib/edition/editor.ts";
+import { assemble, research, write, type Edition, type Paper, type Reader } from "../lib/edition/editor.ts";
+import { recall, RECALL_DAYS, type Earlier } from "../lib/edition/recall.ts";
 import { birthdays } from "../lib/extras/google.ts";
 import { drawPictures } from "../lib/extras/illustrate.ts";
 import { step } from "../lib/edition/log.ts";
@@ -21,14 +22,14 @@ export async function makeEdition(id: string, userId: string, settings: Settings
   const next = (name: string) => stageStep(id, (stage = name));
   try {
     await next("Researching the news");
-    const followed = await followedStep(userId);
+    const reader = await readerStep(id, userId);
     const [forecast, notes] = await Promise.all([
       forecastStep(settings.location, settings.temperature),
-      researchStep(settings, date, followed),
+      researchStep(settings, date, reader),
     ]);
     await next("Writing the stories");
     const forecastText = forecast ? describeForecast(forecast) : "";
-    const { edition, usd } = await writeStep(settings, userId, date, notes.notes, forecastText, followed);
+    const { edition, usd } = await writeStep(settings, date, notes.notes, forecastText, reader);
     await next("Drawing the pictures and printing");
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
@@ -83,34 +84,46 @@ async function forecastStep(location: string, temperature: Settings["temperature
   return step("Getting the forecast", () => getForecast(location, temperature));
 }
 
-// The stories the reader follows, for Your Desk.
-async function followedStep(userId: string): Promise<Followed[]> {
+// What the editor knows about the reader: the stories they follow (for Your Desk), the hard terms they know, and what
+// they've read in their editions of the last two weeks.
+async function readerStep(id: string, userId: string): Promise<Reader> {
   "use step";
-  const { data, error } = await admin()
-    .from("followed_stories")
-    .select("headline, deck, created_at")
-    .eq("user_id", userId)
-    .order("created_at");
-  if (error) throw error;
-  return data.map((f) => ({ headline: f.headline, deck: f.deck, since: f.created_at.slice(0, 10) }));
+  const db = admin();
+  const since = new Date(Date.now() - RECALL_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const [followed, known, editions] = await Promise.all([
+    db.from("followed_stories").select("story_id, headline, deck, created_at").eq("user_id", userId).order("created_at"),
+    knownWordsFor(db, userId),
+    db
+      .from("editions")
+      .select("id, day, content, layout")
+      .eq("user_id", userId)
+      .eq("status", "ready")
+      .neq("id", id)
+      .gte("day", since)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (followed.error) throw followed.error;
+  if (editions.error) throw editions.error;
+  return {
+    followed: followed.data.map((f) => ({
+      id: f.story_id,
+      headline: f.headline,
+      deck: f.deck,
+      since: f.created_at.slice(0, 10),
+    })),
+    known,
+    read: recall(editions.data as Earlier[]),
+  };
 }
 
-async function researchStep(settings: Settings, date: string, followed: Followed[]) {
+async function researchStep(settings: Settings, date: string, reader: Reader) {
   "use step";
-  return step("Researching the news", () => research(settings, date, followed));
+  return step("Researching the news", () => research(settings, date, reader));
 }
 
-async function writeStep(
-  settings: Settings,
-  userId: string,
-  date: string,
-  notes: string,
-  forecast: string,
-  followed: Followed[],
-) {
+async function writeStep(settings: Settings, date: string, notes: string, forecast: string, reader: Reader) {
   "use step";
-  const known = await knownWordsFor(admin(), userId);
-  return step("Writing the edition", () => write(settings, date, notes, forecast, followed, known));
+  return step("Writing the edition", () => write(settings, date, notes, forecast, reader));
 }
 
 async function picturesStep(settings: Settings, edition: Edition) {

@@ -2,7 +2,7 @@
 
 ## Now: the paper prints by itself every morning
 
-0. [ ] **Apply the database migrations:** `npx supabase db push` (followed stories, the edition stage, and one paper per print time). The Paper and Editions pages fail until the stage is applied
+0. [ ] **Apply the database migration:** `npx supabase db push` (followed stories known by id). It drops follows saved by headline, so follow those stories again. Following fails until it's applied
    - [ ] Email the reader when a paper fails or is skipped (needs an email provider)
 1. [ ] **Deploy to Vercel:**
    - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`). None are set there yet (2026-11-18)
@@ -11,6 +11,7 @@
 2. [ ] **Check the first deployed edition:** the PDF renders on Vercel (`@sparticuz/chromium` is untried there), the fonts are right, each step finishes within Vercel's time limit, and what it cost on the API
 3. [ ] **Point the printer box at Vercel:** in the deployed app, make a new printer key and run its command on the Pi
 4. [ ] Watch the first few mornings
+   - [ ] Repeats: does a story from an earlier paper come back only with real news, shorter, with `continues` set? Is anything important missing?
 
 ## Quality
 
