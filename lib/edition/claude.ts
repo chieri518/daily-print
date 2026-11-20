@@ -9,16 +9,16 @@ import { z } from "zod";
 // instead of the API. It is for personal testing only: anything deployed must use ANTHROPIC_API_KEY.
 export const useClaudeCode = process.env.USE_CLAUDE_CODE === "1";
 
-// Opus for the news, Sonnet (faster) for small jobs. `alias` is the name Claude Code uses.
+// Opus writes the stories, unless the reader chose Sonnet; Sonnet does the rest. `alias` is the name Claude Code uses.
 // Prices in USD per million tokens; web search is per request.
 const MODELS = {
   opus: { id: "claude-opus-5-5", alias: "opus", input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
-  sonnet: { id: "claude-sonnet-5-5", alias: "sonnet", input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+  sonnet: { id: "claude-sonnet-5-5", alias: "sonnet", input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
 };
 const SEARCH_PRICE = 0.01;
 
-// `label` names the call in the log; `fast` uses the faster model.
-type Options = { label: string; search?: boolean; schema?: z.ZodType; fast?: boolean };
+// `label` names the call in the log. `searches` is the most web searches it may make (none when left out).
+type Options = { label: string; model: keyof typeof MODELS; searches?: number; schema?: z.ZodType };
 
 // Sends one prompt to Claude, with web search and/or a JSON output schema.
 // Returns the reply's text (JSON when a schema is given) and its cost in USD.
@@ -26,8 +26,8 @@ export function ask(prompt: string, options: Options) {
   return useClaudeCode ? askClaudeCode(prompt, options) : askApi(prompt, options);
 }
 
-async function askApi(prompt: string, { label, search, schema, fast }: Options) {
-  const model = fast ? MODELS.sonnet : MODELS.opus;
+async function askApi(prompt: string, { label, model: name, searches, schema }: Options) {
+  const model = MODELS[name];
   const client = new Anthropic();
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];
   let usd = 0;
@@ -38,7 +38,7 @@ async function askApi(prompt: string, { label, search, schema, fast }: Options) 
         max_tokens: 32000,
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default", // if Claude declines by mistake, retry on another model
-        tools: search ? [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }] : undefined,
+        tools: searches ? [{ type: "web_search_20260209", name: "web_search", max_uses: searches }] : undefined,
         output_config: { effort: "medium", format: schema && betaZodOutputFormat(schema) },
         messages,
       })
@@ -63,20 +63,21 @@ async function askApi(prompt: string, { label, search, schema, fast }: Options) 
   }
 }
 
-async function askClaudeCode(prompt: string, { label, search, schema, fast }: Options) {
+async function askClaudeCode(prompt: string, { label, model, searches, schema }: Options) {
   const args = [
     "-p",
     prompt,
     "--output-format",
     "json",
     "--model",
-    (fast ? MODELS.sonnet : MODELS.opus).alias,
+    MODELS[model].alias,
     "--effort",
     "medium",
     "--no-session-persistence",
   ];
-  args.push("--tools", search ? "WebSearch,WebFetch" : "");
-  if (search) args.push("--allowedTools", "WebSearch,WebFetch");
+  // Claude Code has no limit on searches: the prompt asks for at most `searches`.
+  args.push("--tools", searches ? "WebSearch,WebFetch" : "");
+  if (searches) args.push("--allowedTools", "WebSearch,WebFetch");
   if (schema) args.push("--json-schema", JSON.stringify(z.toJSONSchema(schema, { target: "draft-07" })));
 
   // Without an API key in its environment, Claude Code uses your subscription login.
@@ -89,11 +90,11 @@ async function askClaudeCode(prompt: string, { label, search, schema, fast }: Op
   const result = JSON.parse(stdout);
   if (result.is_error) throw new Error(`Claude Code failed: ${result.result}`);
   // Claude Code runs web searches through a helper model, so count them across every model it used.
-  const searches = Object.values(result.modelUsage as Record<string, { webSearchRequests?: number }>).reduce(
+  const searched = Object.values(result.modelUsage as Record<string, { webSearchRequests?: number }>).reduce(
     (sum, m) => sum + (m.webSearchRequests ?? 0),
     0,
   );
-  logCall(label, result.num_turns, searches, result.usage.output_tokens);
+  logCall(label, result.num_turns, searched, result.usage.output_tokens);
   // total_cost_usd is what the run would cost on the API. Your subscription covers it.
   return { text: schema ? JSON.stringify(result.structured_output) : result.result, usd: result.total_cost_usd };
 }

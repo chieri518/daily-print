@@ -64,7 +64,7 @@ Have a Claude subscription? `USE_CLAUDE_CODE=1 npm run paper` runs Claude throug
 ### The web app
 
 1. **Supabase:** create a project. Under Project Settings → API Keys, copy the URL, the publishable key and a secret key into `.env`. Then create the tables and storage: `npx supabase login`, `npx supabase link`, `npx supabase db push`.
-2. **Google sign-in:** in Google Cloud, create an OAuth client of type "Web application" with the redirect URI shown on Supabase's Authentication → Providers → Google page. Paste its client ID and secret into that page, and into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`. Turn Google on.
+2. **Google sign-in:** in Google Cloud, create an OAuth client of type "Web application" with the redirect URI shown on Supabase's Authentication → Providers → Google page. Paste its client ID and secret into that page and turn Google on. (The app's own copy, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, is only for Birthdays, step 5.)
 3. **Redirect URLs:** under Supabase's Authentication → URL Configuration, add `http://localhost:3000/auth/callback` (and later your Vercel address plus `/auth/callback`).
 4. **Who can make papers:** put your email in `ALLOWED_EMAILS`. Each paper costs money, so only these readers get them; anyone else can sign in and customize, and sees sample papers.
 5. **Birthdays (optional):** in Google Cloud, turn on the **Google Calendar API**, add the `calendar.events.readonly` scope under Data Access, and add `http://localhost:3000/api/google/callback` (and your Vercel address plus `/api/google/callback`) to the OAuth client's redirect URIs. Set the app's publishing status to **In production**; in Testing, Google cancels the access every 7 days.
@@ -96,8 +96,8 @@ To try the morning paper on your computer before deploying: set the print time a
 | Folder | What's in it |
 |---|---|
 | [app/](app/) | The web app's pages: the landing page, Paper, Editions and Customize ([app/customize/](app/customize/)), plus [actions.ts](app/actions.ts) (what the buttons do) and [api/](app/api/) (the daily scheduler, the printer box and Google) |
-| [workflows/edition.ts](workflows/edition.ts) | Making one edition, step by step: research, write, draw, print the PDF, save |
-| [lib/edition/](lib/edition/) | The editor: researching and writing with Claude ([editor.ts](lib/edition/editor.ts), [claude.ts](lib/edition/claude.ts)), what the reader has already read ([recall.ts](lib/edition/recall.ts)), and how many words fit each spot ([space.ts](lib/edition/space.ts)) |
+| [workflows/edition.ts](workflows/edition.ts) | Making one edition, step by step: research, write, draw, fit the stories, print the PDF, save |
+| [lib/edition/](lib/edition/) | The editor: researching and writing with Claude ([editor.ts](lib/edition/editor.ts), [claude.ts](lib/edition/claude.ts)), what the reader has already read ([recall.ts](lib/edition/recall.ts)), how many characters fit each spot ([space.ts](lib/edition/space.ts)), and rewriting stories that don't fit once they're laid out ([revise.ts](lib/edition/revise.ts)) |
 | [lib/paper/](lib/paper/) | Drawing the newspaper, the same on screen and in the PDF: the components ([newspaper.tsx](lib/paper/newspaper.tsx), [features.tsx](lib/paper/features.tsx)), the stylesheet ([css.ts](lib/paper/css.ts)) and printing the PDF ([render.ts](lib/paper/render.ts)) |
 | [lib/extras/](lib/extras/) | Everything besides the news: the forecast, puzzles, pictures and birthdays |
 | [lib/printing/](lib/printing/) | Scheduling the morning paper and the printer box's keys |
@@ -119,7 +119,7 @@ To try the morning paper on your computer before deploying: set the print time a
 
 ## Status
 
-Built: a web app where readers sign in with Google, design their paper on the Customize page, and read each edition on the Paper page, turning pages left and right, or as a PDF. Editions are made on demand, or every morning for a printer box at home. Readers can follow a story with + on the Paper page; updates on it appear in the Your Desk section. Next: printing by itself every morning from the deployed app, and explaining any term on the web view. See [docs/TODO.md](docs/TODO.md).
+Built: a web app where readers sign in with Google, design their paper on the Customize page, and read each edition on the Paper page, turning pages left and right, or as a PDF. Editions are made on demand, or every morning for a printer box at home. Readers can follow a story with + on the Paper page; updates on it appear in the Your Desk section. Next: printing by itself every morning from the deployed app. See [docs/TODO.md](docs/TODO.md).
 
 ## License
 

@@ -3,7 +3,6 @@
 ## Now: the paper prints by itself every morning
 
 0. [ ] **Apply the database migration:** `npx supabase db push` (followed stories known by id). It drops follows saved by headline, so follow those stories again. Following fails until it's applied
-   - [ ] Email the reader when a paper fails or is skipped (needs an email provider)
 1. [ ] **Deploy to Vercel:**
    - [ ] Add every variable from `.env.example` on Vercel, with `ANTHROPIC_API_KEY` (and without `USE_CLAUDE_CODE`). None are set there yet (2026-11-18)
    - [ ] Set monthly spending limits with Anthropic and the picture provider (OpenAI or Google)
@@ -15,20 +14,21 @@
 
 ## Quality
 
-- [ ] Tune the estimates in `lib/edition/space.ts` (words per square inch, puzzle heights) against real editions
+- [ ] Check the character estimates in `lib/edition/space.ts` against new editions (measured by drawing every layout with stories of typical length; see DECISIONS), using the empty space saved in each edition's fit, and the puzzle heights
+- [ ] After a week of editions: how often the fitting pass runs ("Rewriting to fit" in the log), whether its rewrites hit their lengths, how much space is still empty, and how often timelines and pull quotes fit
+- [ ] Measure an edition's real cost on the API (not `USE_CLAUDE_CODE`, whose cost is Claude Code's own estimate) with research on Sonnet, and with each writing model
 - [ ] Add the pictures' cost to each edition's cost
 - [ ] Compare editions at different costs ($0.10, $0.50, $1) to see how quality changes
 
 ## Later
 
 - [ ] Editions page: a front-page thumbnail for each edition
-- [ ] Turn failure reasons into plain words: they are the raw error messages for now (fine for the owner and testers)
+- [ ] Email the reader when a paper fails or is skipped (needs an email provider)
 - [ ] Tell readers in Customize when automatic papers aren't available to them (not in `ALLOWED_EMAILS`)
 - [ ] Printer box: pairing with a code instead of a key; printing a paper made with Generate; telling the reader when a paper was skipped
 - [ ] Try the Mac printer box and `DOUBLE_SIDED` on real printers (written, untested)
 - [ ] Sudoku difficulty as a setting
 - [ ] Feedback on stories that shapes future editions
-- [ ] Page-turn viewer in the browser
 - [ ] Paper page on phones: scale the pages down to the screen width (they are print-sized, so a phone scrolls sideways)
 - [ ] Make a real edition with followed stories and check Your Desk: are the updates right, do they fit its spot, and does the "no news" line read well?
 - [ ] Saved pages from before Your Desk don't have it: the owner and testers drag it in, or use Default pages

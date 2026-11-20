@@ -12,6 +12,13 @@ export async function GET(request: Request) {
   await sweep(); // first, so a lost paper doesn't stop its reader's next one being scheduled
   const { data: papers, error } = await admin().from("papers").select("user_id, settings");
   if (error) throw error;
-  for (const paper of papers) await scheduleNext(paper.user_id, settingsOrDefaults(paper.settings));
-  return Response.json({ scheduled: papers.length });
+  let failed = 0;
+  for (const paper of papers) {
+    // One reader's error (say, a bad time zone) mustn't stop everyone else's paper.
+    await scheduleNext(paper.user_id, settingsOrDefaults(paper.settings)).catch((error) => {
+      console.error(`Couldn't schedule ${paper.user_id}'s paper:`, error);
+      failed++;
+    });
+  }
+  return Response.json({ scheduled: papers.length - failed, failed });
 }

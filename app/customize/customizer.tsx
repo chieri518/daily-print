@@ -14,6 +14,7 @@ import {
   TEMPERATURES,
   TONES,
   TYPEFACES,
+  WRITING_MODELS,
   type Settings,
 } from "@/lib/settings";
 
@@ -198,6 +199,12 @@ export function Customizer({
             onChange={(e) => set({ readingLevel: e.target.value as Settings["readingLevel"] })}
           >
             <Options options={READING_LEVELS} />
+          </select>
+        </label>
+        <label>
+          Model that writes the stories
+          <select value={settings.model} onChange={(e) => set({ model: e.target.value as Settings["model"] })}>
+            <Options options={WRITING_MODELS} />
           </select>
         </label>
         <label className="wide">

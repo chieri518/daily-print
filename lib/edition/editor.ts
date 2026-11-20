@@ -6,13 +6,13 @@ import {
   FEATURES,
   hasDesk,
   isDesk,
-  MAIN_STORY_WORDS,
   READING_LEVELS,
+  SHORT_STORY_CHARACTERS,
   TONES,
   type Section,
   type Settings,
 } from "../settings.ts";
-import { illustratedSpot, measure, pictureWords, words } from "./space.ts";
+import { characters, illustratedSpot, measure, pictureCharacters, type Size } from "./space.ts";
 import type { Forecast } from "../extras/weather.ts";
 
 const Story = z.object({
@@ -29,6 +29,11 @@ const Story = z.object({
     .max(3)
     .describe("Exactly 3 sourced milestones, oldest first, or an empty array when fewer than 3 are verified"),
   whyItMatters: z.string().describe("A fresh consequence in at most 12 words, only if the story does not already explain it. Empty otherwise"),
+  pullQuote: z
+    .string()
+    .describe(
+      "For a story of 3 or more paragraphs: its most striking sentence or phrase, copied word for word from its third paragraph or later, at most 20 words. Empty otherwise",
+    ),
   terms: z
     .array(
       z.object({
@@ -177,7 +182,23 @@ export function assemble(edition: Edition, forecast: Forecast | null, seed: stri
 const storySections = (settings: Settings) =>
   settings.pages.flatMap((p) => p.slots).filter((s): s is Section => !!s && !s.kind);
 
-// The page plan: every section in order, and how many words fit in its spot. Empty spots are left out.
+// The most stories a section holds: one, or in a big section two or three, when the main story keeps at least half
+// and each shorter one gets SHORT_STORY_CHARACTERS. `less` is taken off each, for the front-page illustration.
+function mostStories(size: Size, less = 0) {
+  const fit = (stories: number) => characters(size, stories) - less;
+  return fit(3) >= 4 * SHORT_STORY_CHARACTERS ? 3 : fit(2) >= 2 * SHORT_STORY_CHARACTERS ? 2 : 1;
+}
+
+// How many stories a section holds and the most characters they can have.
+function budget(size: Size, less = 0) {
+  const say = (stories: number) => Math.max(0, characters(size, stories) - less).toLocaleString("en-US");
+  const most = mostStories(size, less);
+  if (most === 1) return `one story, up to ${say(1)} characters`;
+  const more = most === 2 ? `or ${say(2)} as two` : `${say(2)} as two, or ${say(3)} as three`;
+  return `up to ${say(1)} characters as one story, ${more}`;
+}
+
+// The page plan: every section in order, and how many characters fit in its spot. Empty spots are left out.
 function pagePlan(settings: Settings) {
   const illustrated = illustratedSpot(settings);
   return settings.pages
@@ -186,13 +207,13 @@ function pagePlan(settings: Settings) {
       const lines = page.slots.flatMap((s, j) => {
         if (!s) return [];
         if (s.kind) return [`${FEATURES[s.kind].title}. Made automatically: leave its stories empty.`];
-        // Leave room for chronology rules, dates and dots as well as story text.
-        const fit = Math.floor(words(space[j]!) * 0.75 / 10) * 10;
-        const size =
-          i === 0 && j === illustrated
-            ? `About ${Math.max(0, fit - pictureWords(space[j]!.width))} words with the illustration, or ${fit} without it.`
-            : `About ${fit} words.`;
-        return [`${s.title} (${s.about}). ${size}`];
+        const picture = i === 0 && j === illustrated ? pictureCharacters(space[j]!.width) : 0;
+        const size = isDesk(s)
+          ? `up to ${characters(space[j]!).toLocaleString("en-US")} characters in all.`
+          : picture
+          ? `with the illustration, ${budget(space[j]!, picture)}; without it, ${budget(space[j]!)}.`
+          : `${budget(space[j]!)}.`;
+        return [`${s.title} (${s.about}): ${size}`];
       });
       const list = lines.map((line, k) => `  - Section ${k + 1}: ${line}`).join("\n");
       return `Page ${i + 1}${i === 0 ? " (front page, below the masthead)" : ""}:\n${list}`;
@@ -206,7 +227,7 @@ function pictureRule(settings: Settings) {
   if (spot < 0) return "- This paper has no illustration: leave it empty.";
   return `- The illustration goes with one light or neutral story in the front page's ${
     settings.pages[0].slots[spot]!.title
-  } section. Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra words instead. Put the illustrated story first in its section.`;
+  } section. Never illustrate violence, death, injury, war, disasters, crime or grief. If no story there suits, leave it empty and write the extra characters instead. Put the illustrated story first in its section.`;
 }
 
 // What the reader asked for beyond the page plan, for both steps.
@@ -224,7 +245,7 @@ function preferences(settings: Settings) {
 const continueRule = (read: Thread[]) =>
   alreadyRead(
     read,
-    `Don't tell them again. When the notes have real news on one, write a shorter story about only what's new, with one sentence of background, and set "continues" to its id exactly as listed (without the brackets).`,
+    `Don't tell them again. When the notes have real news on one, write a shorter story about only what's new, with one sentence of background, as one of its section's stories, never an extra one, and set "continues" to its id exactly as listed (without the brackets).`,
   ) || `Leave "continues" empty.`;
 
 // Your Desk's rule for the editor: an update on each followed story, or a note on how to follow one.
@@ -245,6 +266,8 @@ export async function research(settings: Settings, date: string, { followed, rea
   const results = await Promise.allSettled(
     sections.map((s) => {
       if (isDesk(s) && !followed.length) return { text: "The reader follows no stories yet.", usd: 0 };
+      // Search results are most of research's cost. Your Desk gets a search for each followed story.
+      const searches = isDesk(s) ? Math.max(3, followed.length) : 3;
       const task = isDesk(s)
         ? `Find what's new in the last 24 hours on each story the reader follows, or say there's nothing new:\n${listFollowed(followed)}`
         : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).
@@ -254,10 +277,10 @@ ${alreadyRead(read.filter((t) => t.section === s.title), "Find other news, unles
           `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
 ${task}
 ${s.sources?.length ? `Prefer these sources: ${s.sources.join(", ")}.` : ""}
-For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: a few searches are enough.
+For every story, give the key facts and the source names and URLs. Write notes, not articles. Be quick: use at most ${searches} searches.
 Include up to 3 dated milestones showing how each story developed, from earlier background to the latest news. Only include dates and events verified by the sources; do not invent history or future developments.
 ${preferences(settings)}`,
-          { label: `Research: ${s.title}`, search: true },
+          { label: `Research: ${s.title}`, model: "sonnet", searches },
         );
       return call().catch(call); // retried once, like every Claude call
     }),
@@ -292,11 +315,12 @@ Rules:
 - Write in English. Tone: ${TONES[settings.tone].guide}. Reading level: ${READING_LEVELS[settings.readingLevel]}.
 - News stories must only use facts from the notes, and must list their sources.
 - Add a compact timeline to a news story only when the notes verify at least 3 distinct, dated developments in chronological order: what started the story, a meaningful change, and its current status. End with what is known now, without repeating the headline. Each event is at most 10 words. Use exactly 3 milestones or an empty array; never include a 2-event timeline. Use an empty array for editorials and other non-news pieces. Never invent dates or predictions.
-- Fill whyItMatters with one sourced, concrete consequence of this development, at most 12 words, only when the timeline has 3 events and the article does not already explain it. Otherwise leave it empty. It is printed beneath the timeline and counts toward the section's space.
-- Timeline text counts toward the section's word limit. Reserve roughly 0.7 inches of section height for each timeline by shortening the article body; allow more room in narrow sections. Keep timelines concise so they fit below the story.
+- Fill whyItMatters with one sourced, concrete consequence of this development, at most 12 words, only when the timeline has 3 events and the article does not already explain it. Otherwise leave it empty.
+- Give each story of 3 or more paragraphs a pull quote: its most striking sentence or phrase, copied word for word from its third paragraph or later. It's printed after the first paragraph.
+- Timelines and pull quotes are printed only where a section has room left after its stories, so never shorten a story to make room for them.
 - Pieces you write yourself, such as editorials and analysis, must say so in their label (e.g. "Editorial").
-- The word counts are limits: the paper is printed, and text that doesn't fit is cut off. Stay at or under them.
-- A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
+- Each section's character budget is the space it has on paper: the characters of its stories' paragraphs, spaces included (headlines, decks and sources are already allowed for). Choose how many stories a section holds, then write them to between 85% and 100% of the budget for that many: text over it shrinks the section's type, and text under it leaves white space. If the notes don't have enough real news to fill a section, write what there is rather than padding it.
+- Write exactly one story in a section the plan gives one story. A section with budgets for two or three stories holds a main story, at least half its characters, and at most two shorter ones of at least two paragraphs each. Prefer fewer, fuller stories: add a shorter one only when the news calls for it. Stories beyond a section's most are left out of the paper.
 - Don't tell the same story in two sections.
 - ${continueRule(read)}
 - Write like a good newspaper: clear, concrete and short paragraphs.
@@ -309,7 +333,7 @@ ${preferences(settings)}
 
 Research notes:
 ${notes}`,
-      { label: "Writing the stories", schema: Stories },
+      { label: "Writing the stories", model: settings.model, schema: Stories },
     ),
     ask(
       `You make the extras for "${settings.name}", a printed newspaper for one reader in ${
@@ -329,9 +353,29 @@ ${forecast || "Not available. Leave the weather tip empty."}
 
 Research notes:
 ${notes}`,
-      { label: "Writing the extras", schema: Extras, fast: true },
+      { label: "Writing the extras", model: "sonnet", schema: Extras },
     ),
   ]);
-  const edition: Edition = { ...Stories.parse(JSON.parse(stories.text)), ...Extras.parse(JSON.parse(extras.text)) };
+  const written = Stories.parse(JSON.parse(stories.text));
+  const edition: Edition = { ...written, pages: withRoom(written.pages, settings), ...Extras.parse(JSON.parse(extras.text)) };
   return { edition, usd: stories.usd + extras.usd };
+}
+
+// The editor sometimes writes more stories than a section has room for, often an extra follow-up of an earlier story,
+// and the paper would cut them off. Keeps the most the section holds (without the illustration), in the editor's order.
+// Your Desk keeps all its updates.
+function withRoom(pages: Edition["pages"], settings: Settings) {
+  return pages.slice(0, settings.pages.length).map((page, i) => {
+    const slots = settings.pages[i].slots.flatMap((s, j) => (s ? [{ s, j }] : []));
+    const space = measure(settings.pages[i], i === 0, settings.paperSize);
+    return {
+      sections: page.sections.map((section, k) => {
+        const slot = slots[k];
+        if (!slot || slot.s.kind || isDesk(slot.s)) return section;
+        const most = mostStories(space[slot.j]!);
+        if (section.stories.length > most) console.warn(`${slot.s.title}: kept ${most} of its ${section.stories.length} stories, the most it has room for.`);
+        return { ...section, stories: section.stories.slice(0, most) };
+      }),
+    };
+  });
 }

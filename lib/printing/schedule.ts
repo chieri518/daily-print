@@ -8,10 +8,11 @@ import { today } from "../today.ts";
 import { scheduledEdition } from "../../workflows/edition.ts";
 
 // Adds the reader's next paper as a "scheduled" edition, and starts a workflow that sleeps until it's time to make it.
-// A paper waiting for a print time that changed (or was turned off) is cancelled.
+// A paper waiting for a print time that changed (or was turned off) is deleted, so changing back schedules it again.
 export async function scheduleNext(userId: string, settings: Settings) {
   const db = admin();
-  const { data: user } = await db.auth.admin.getUserById(userId);
+  const { data: user, error: userError } = await db.auth.admin.getUserById(userId);
+  if (userError) throw userError; // otherwise the reader would look not allowed, and their papers would be cancelled
   const allowed = canGenerate(user.user?.email); // only allowed readers get papers made for them
   const printAt =
     settings.printTime && allowed ? nextPrintAt(settings.printTime, settings.timeZone).toISOString() : null;
@@ -25,7 +26,7 @@ export async function scheduleNext(userId: string, settings: Settings) {
   if (old.length) {
     const { error } = await db
       .from("editions")
-      .update({ status: "stopped" })
+      .delete()
       .in(
         "id",
         old.map((e) => e.id),
@@ -34,13 +35,13 @@ export async function scheduleNext(userId: string, settings: Settings) {
   }
   if (!printAt) return;
 
-  // Already scheduled, being written, or made for this print time? Then there's nothing to do.
+  // Already scheduled, being written, made or cancelled (Cancel) for this print time? Then there's nothing to do.
   const { data: existing } = await db
     .from("editions")
     .select("id")
     .eq("user_id", userId)
     .eq("print_at", printAt)
-    .in("status", ["scheduled", "writing", "ready"]);
+    .in("status", ["scheduled", "writing", "ready", "stopped"]);
   if (existing?.length) return;
 
   const { day } = today(settings.timeZone, new Date(printAt));
@@ -55,9 +56,9 @@ export async function scheduleNext(userId: string, settings: Settings) {
 }
 
 // Marks papers that will never finish as failed, so the reader sees why and the next paper can be scheduled: one being
-// written for over 30 minutes (its workflow crashed or was lost), and one still waiting after its print time (the
-// workflow that should have woken it was lost). A paper made with Generate starts writing when it's made; one for the
-// printer box, 20 minutes before its print time. For one reader, or for everyone when `userId` is left out.
+// written for over 10 minutes (its workflow crashed or was lost), and one still waiting after its print time (the
+// workflow that should have woken it was lost). A paper starts writing when it's made, or for the printer box 20 minutes
+// before its print time, whichever is later. For one reader, or for everyone when `userId` is left out.
 export async function sweep(userId?: string) {
   const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
   const fail = (status: string, error: string) => {
@@ -65,10 +66,10 @@ export async function sweep(userId?: string) {
     return userId ? query.eq("user_id", userId) : query;
   };
   const [writing, waiting] = await Promise.all([
-    // Started over 30 minutes ago: made with Generate before then, or printing over 10 minutes ago (woken 20 before)
-    fail("writing", "It took over 30 minutes, so it was given up.").or(
-      `and(print_at.is.null,created_at.lt.${ago(30)}),print_at.lt.${ago(10)}`,
-    ),
+    // Started over 10 minutes ago: made before then, and (for the printer box) printing in under 10 minutes
+    fail("writing", "It took over 10 minutes, so it was given up.")
+      .lt("created_at", ago(10))
+      .or(`print_at.is.null,print_at.lt.${ago(-10)}`),
     fail("scheduled", "It was never started: its scheduled job was lost.").lt("print_at", ago(0)),
   ]);
   if (writing.error) throw writing.error;
@@ -88,6 +89,12 @@ function nextPrintAt(printTime: string, timeZone: string) {
 // The moment when the clock in `timeZone` shows `day` (YYYY-MM-DD) at `time` (HH:MM).
 function zoned(day: string, time: string, timeZone: string) {
   const asUtc = Date.parse(`${day}T${time}:00Z`);
+  // Shifted by the time zone's offset from UTC, twice: the offset at the guess is the right one on clock-change days.
+  return new Date(asUtc - offset(asUtc - offset(asUtc, timeZone), timeZone));
+}
+
+// How far the clock in `timeZone` is ahead of UTC at the moment `at`, in milliseconds.
+function offset(at: number, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
@@ -96,8 +103,7 @@ function zoned(day: string, time: string, timeZone: string) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).formatToParts(asUtc);
+  }).formatToParts(at);
   const part = (type: string) => Number(parts.find((p) => p.type === type)!.value);
-  const shown = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
-  return new Date(asUtc - (shown - asUtc)); // shift by the time zone's offset from UTC
+  return Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute")) - at;
 }
