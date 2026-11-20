@@ -3,6 +3,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { useClaudeCode } from "../lib/edition/claude.ts";
 import { assemble, research, write } from "../lib/edition/editor.ts";
+import { fitStories } from "../lib/edition/revise.ts";
 import { drawPictures } from "../lib/extras/illustrate.ts";
 import { step } from "../lib/edition/log.ts";
 import { renderPdf } from "../lib/paper/render.ts";
@@ -31,11 +32,7 @@ const { edition, usd } = await step("Writing the edition", () =>
   write(settings, date, notes.notes, forecast ? describeForecast(forecast) : "", reader),
 );
 const images = await step("Drawing the pictures", () => drawPictures(settings, edition));
-// Birthdays need a Google Calendar connected in the web app, so this command prints without them.
-const paper = assemble(edition, forecast, day, []);
-const costUsd = notes.usd + usd;
 mkdirSync("editions", { recursive: true });
-writeFileSync(`${file}.json`, JSON.stringify({ date, costUsd, paper }, null, 2));
 
 // The most recent earlier edition, whose answers this paper prints.
 const previous = readdirSync("editions")
@@ -44,9 +41,20 @@ const previous = readdirSync("editions")
   .at(-1);
 const yesterday = previous ? JSON.parse(readFileSync(`editions/${previous}`, "utf8")).paper?.puzzles ?? null : null;
 
-const { pdf, overflowing } = await step("Printing the PDF", () =>
-  renderPdf(paper, { settings, date, yesterday, pictures: images, fit: null }),
-);
+// The text, puzzles and cost, saved as soon as they're paid for, and again once the stories fit.
+const save = (paper: unknown, costUsd: number) =>
+  writeFileSync(`${file}.json`, JSON.stringify({ date, costUsd, paper }, null, 2));
+
+// Birthdays need a Google Calendar connected in the web app, so this command prints without them.
+const layout = { settings, date, yesterday, pictures: images, fit: null };
+const written = assemble(edition, forecast, day, []);
+save(written, notes.usd + usd);
+const fitted = await step("Fitting the stories to the pages", () => fitStories(written, layout, notes.notes));
+const { paper } = fitted;
+const costUsd = notes.usd + usd + fitted.usd;
+save(paper, costUsd);
+
+const { pdf, overflowing } = await step("Printing the PDF", () => renderPdf(paper, layout));
 writeFileSync(`${file}.pdf`, pdf);
 
 if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
