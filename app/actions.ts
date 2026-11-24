@@ -4,7 +4,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
-import { followedHeadline, type Paper } from "@/lib/edition/editor";
+import { followedId, withIds, type Paper } from "@/lib/edition/editor";
 import { MAX_FOLLOWED, Settings } from "@/lib/settings";
 import { disconnect } from "@/lib/extras/google";
 import { newPrinterKey } from "@/lib/printing/printer";
@@ -97,22 +97,22 @@ export async function stopEdition(id: string) {
 
 // Follows a story from one of the reader's editions, or stops following it. Updates on followed stories go in Your
 // Desk; an update there stands for the story it updates. Returns false if the reader already follows the most allowed.
-export async function follow(editionId: string, headline: string, on: boolean) {
+export async function follow(editionId: string, storyId: string, on: boolean) {
   const reader = await requireReader();
   const { data, error } = await reader.supabase.from("editions").select("content").eq("id", editionId).single();
   if (error) throw error;
-  const stories = (data.content as Paper).pages.flatMap((p) => p.sections.flatMap((s) => s.stories));
-  const story = stories.find((s) => s.headline === headline);
+  const pages = withIds((data.content as Paper).pages, editionId);
+  const story = pages.flatMap((p) => p.sections.flatMap((s) => s.stories)).find((s) => s.id === storyId);
   if (!story) throw new Error("That story isn't in this edition.");
   const followed = () => reader.supabase.from("followed_stories");
   if (on) {
-    const { count } = await followed().select("headline", { count: "exact", head: true });
+    const { count } = await followed().select("story_id", { count: "exact", head: true });
     if ((count ?? 0) >= MAX_FOLLOWED) return false;
-    const row = { user_id: reader.id, headline: followedHeadline(story), deck: story.deck };
+    const row = { user_id: reader.id, story_id: followedId(story), headline: story.headline, deck: story.deck };
     const { error } = await followed().upsert(row, { ignoreDuplicates: true });
     if (error) throw error;
   } else {
-    const { error } = await followed().delete().eq("headline", followedHeadline(story));
+    const { error } = await followed().delete().eq("story_id", followedId(story));
     if (error) throw error;
   }
   refresh(); // the Paper page, with the new follow buttons

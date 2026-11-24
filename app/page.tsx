@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Landing } from "./landing";
 import { canGenerate } from "@/lib/allowed";
-import { followedHeadline, type Paper as Edition } from "@/lib/edition/editor";
+import { followedId, mapStories, withIds, type Paper as Edition } from "@/lib/edition/editor";
 import { Newspaper, type Follow, type Layout } from "@/lib/paper/newspaper";
 import { css } from "@/lib/paper/css";
 import { fontsUrl, hasDesk, isDesk, knownWordsFor, TYPEFACES } from "@/lib/settings";
@@ -79,19 +79,21 @@ export default async function Paper({ searchParams }: { searchParams: Promise<{ 
   const known = new Set(await knownWordsFor(reader.supabase, reader.id));
 
   // A + next to each story, to follow it into Your Desk. Not on Your Desk's note on how to follow a story.
-  const { data: followed, error: followedError } = await reader.supabase.from("followed_stories").select("headline");
+  const { data: followed, error: followedError } = await reader.supabase.from("followed_stories").select("story_id");
   if (followedError) throw followedError;
-  const following = new Set(followed.map((f) => f.headline));
+  const following = new Set(followed.map((f) => f.story_id));
   const desk = hasDesk(await loadSettings(reader));
   const follow: Follow = (story, section) =>
-    (!isDesk(section) || story.follows) && (
+    (!isDesk(section) || story.updates) && (
       <FollowButton
         edition={shown.id}
+        id={story.id}
         headline={story.headline}
-        following={following.has(followedHeadline(story))}
+        following={following.has(followedId(story))}
         desk={desk}
       />
     );
+  const paper = shown.content as Edition;
   return (
     <>
       <link rel="stylesheet" href={fontsUrl(TYPEFACES[layout.settings.typeface])} precedence="default" />
@@ -102,7 +104,7 @@ export default async function Paper({ searchParams }: { searchParams: Promise<{ 
       {older}
       <PageTurner pdf={pdf} pages={layout.settings.pages.length}>
         <Newspaper
-          paper={withoutKnown(shown.content as Edition, known)}
+          paper={{ ...paper, pages: withoutKnown(withIds(paper.pages, shown.id), known) }}
           layout={{ ...layout, pictures }}
           follow={follow}
         />
@@ -142,12 +144,6 @@ function Samples() {
   );
 }
 
-// The paper without the hard terms the reader already knows, so they aren't explained.
-function withoutKnown(paper: Edition, known: Set<string>): Edition {
-  const pages = paper.pages.map(({ sections }) => ({
-    sections: sections.map(({ stories }) => ({
-      stories: stories.map((s) => ({ ...s, terms: (s.terms ?? []).filter((t) => !known.has(t.term.toLowerCase())) })),
-    })),
-  }));
-  return { ...paper, pages };
-}
+// The paper's stories without the hard terms the reader already knows, so they aren't explained.
+const withoutKnown = (pages: Edition["pages"], known: Set<string>) =>
+  mapStories(pages, (s) => ({ ...s, terms: (s.terms ?? []).filter((t) => !known.has(t.term.toLowerCase())) }));

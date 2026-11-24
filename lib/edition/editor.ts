@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ask } from "./claude.ts";
+import type { Thread } from "./recall.ts";
 import { makePuzzles, type Puzzles } from "../extras/puzzles.ts";
 import {
   FEATURES,
@@ -36,9 +37,12 @@ const Story = z.object({
       }),
     )
     .describe("Hard words and acronyms in the story that this reader may not know, explained on the Paper page"),
-  follows: z
+  updates: z
     .string()
-    .describe("In Your Desk only: the headline of the followed story this updates, exactly as listed. Empty elsewhere"),
+    .describe("In Your Desk only: the id of the followed story this updates, exactly as listed. Empty elsewhere"),
+  continues: z
+    .string()
+    .describe("The id of a story the reader already read that this one continues, exactly as listed. Empty otherwise"),
 });
 
 // What the editor writes: the stories, and the picture that goes with one of them.
@@ -103,27 +107,70 @@ const Extras = z.object({
     .describe("Small items printed where a section has space left"),
 });
 
-export type Story = z.infer<typeof Story>;
+// What the editor writes. Each story gets an id when the paper is assembled.
+type Written = z.infer<typeof Story>;
+export type Story = Written & { id: string };
 export type Edition = z.infer<typeof Stories> & z.infer<typeof Extras>;
 
+// A paper's stories, page by page and section by section.
+type Pages<S> = { sections: { stories: S[] }[] }[];
+
+// Changes every story in a paper's pages, keeping their order.
+export const mapStories = <A, B>(pages: Pages<A>, change: (story: A) => B): Pages<B> =>
+  pages.map(({ sections }) => ({ sections: sections.map(({ stories }) => ({ stories: stories.map(change) })) }));
+
+// Gives each story a short id: the first part of its edition's id and its place in the paper, e.g. "3f9a21c4-2".
+// The editor copies short ids more reliably than headlines. Papers made before ids get the same ones when read.
+export function withIds(pages: Pages<Written & { id?: string }>, editionId: string): Pages<Story> {
+  const prefix = editionId.split("-")[0];
+  let n = 0;
+  return mapStories(pages, (s) => ({ ...s, id: `${prefix}-${++n}` }));
+}
+
 // A story the reader follows from the Paper page, and the day (YYYY-MM-DD) they started. Its updates go in Your Desk.
-export type Followed = { headline: string; deck: string; since: string };
+export type Followed = { id: string; headline: string; deck: string; since: string };
 
 // The followed story a story is about: an update in Your Desk is about the story it updates, any other about itself.
-// Editions made before following have no `follows`.
-export const followedHeadline = (story: Story) => story.follows || story.headline;
+export const followedId = (story: Story) => story.updates || story.id;
 
 const listFollowed = (followed: Followed[]) =>
-  followed.map((f) => `- "${f.headline}": ${f.deck} (followed since ${f.since})`).join("\n");
+  followed.map((f) => `- [${f.id}] "${f.headline}": ${f.deck} (followed since ${f.since})`).join("\n");
+
+// What the editor knows about the reader: the stories they follow, the hard terms they know, and what they've already
+// read in recent editions (see recall.ts).
+export type Reader = { followed: Followed[]; known: string[]; read: Thread[] };
+
+// The stories a reader has read, with the days each ran, e.g. "(Nov 12; again Nov 15)".
+const listRead = (read: Thread[]) =>
+  read.map((t) => `  - [${t.id}] "${t.headline}": ${t.deck} (${ranOn(t.days)})`).join("\n");
+
+const ranOn = (days: string[]) => {
+  const [first, ...later] = days.map((d) =>
+    new Date(`${d}T12:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+  );
+  return later.length ? `${first}; again ${later.join(", ")}` : first;
+};
+
+// Tells research and the editor what the reader has already read, so it isn't told again. Real news still goes in:
+// a reader who isn't caught up is worse off than one who reads a short follow-up.
+const alreadyRead = (read: Thread[], doThis: string) =>
+  read.length
+    ? `The reader has already read these stories. ${doThis} Never leave out an important new development to avoid a repeat.\n${listRead(read)}`
+    : "";
 
 // Everything that goes into a printed edition. Saved with the edition, so tomorrow's paper can print the answers.
 // Birthdays are names from the reader's Google Calendar; they never go to Claude.
-export type Paper = Edition & { forecast: Forecast | null; puzzles: Puzzles; birthdays: string[] };
+export type Paper = Omit<Edition, "pages"> & {
+  pages: Pages<Story>;
+  forecast: Forecast | null;
+  puzzles: Puzzles;
+  birthdays: string[];
+};
 
-// Puts the paper together: what Claude wrote, plus the forecast, the puzzles made by code (seeded, so making the same
-// edition again gives the same puzzles) and today's birthdays.
+// Puts the paper together: what Claude wrote, with an id for each story, plus the forecast, the puzzles made by code
+// (seeded, so making the same edition again gives the same puzzles) and today's birthdays. `seed` is the edition's id.
 export function assemble(edition: Edition, forecast: Forecast | null, seed: string, birthdays: string[]): Paper {
-  return { ...edition, forecast, puzzles: makePuzzles(seed, edition), birthdays };
+  return { ...edition, pages: withIds(edition.pages, seed), forecast, puzzles: makePuzzles(seed, edition), birthdays };
 }
 
 // Every section of stories in the paper. Weather and puzzles are made separately.
@@ -173,26 +220,35 @@ function preferences(settings: Settings) {
     .join("\n");
 }
 
+// The editor's rule for stories the reader has read: only what's new, linked to the story it continues.
+const continueRule = (read: Thread[]) =>
+  alreadyRead(
+    read,
+    `Don't tell them again. When the notes have real news on one, write a shorter story about only what's new, with one sentence of background, and set "continues" to its id exactly as listed (without the brackets).`,
+  ) || `Leave "continues" empty.`;
+
 // Your Desk's rule for the editor: an update on each followed story, or a note on how to follow one.
-function deskRule(settings: Settings, followed: Followed[]) {
+function deskRule(settings: Settings, { followed }: Reader) {
   if (!hasDesk(settings)) return "";
   if (!followed.length)
     return `- Your Desk: the reader follows no stories yet. Write one short note labeled "From the editor", with no sources, saying that pressing + next to a story on the Paper page follows it, and its updates appear here.`;
-  return `- Your Desk, whatever its size, holds one short update for each story the reader follows, the most news first, with "follows" set to the followed story's headline exactly as listed. A story with no news in the notes gets a short headline and one sentence saying so. News about a followed story goes in Your Desk, not in another section. The followed stories:
+  return `- Your Desk, whatever its size, holds one short update for each story the reader follows, the most news first, with "updates" set to the followed story's id exactly as listed (without the brackets). A story with no news in the notes gets a short headline and one sentence saying so. News about a followed story goes in Your Desk, not in another section. The followed stories:
 ${listFollowed(followed)}`;
 }
 
 // Step 1: research today's news with web search: one Claude call per section, in parallel. Returns notes, not articles.
 // Your Desk researches the stories the reader follows, if any. A section whose research fails twice is skipped with a
 // note to the editor, rather than failing the whole paper; only when every section fails does the paper fail.
-export async function research(settings: Settings, date: string, followed: Followed[]) {
+// Each section's research is told only the stories the reader has read in that section.
+export async function research(settings: Settings, date: string, { followed, read }: Reader) {
   const sections = storySections(settings);
   const results = await Promise.allSettled(
     sections.map((s) => {
       if (isDesk(s) && !followed.length) return { text: "The reader follows no stories yet.", usd: 0 };
       const task = isDesk(s)
         ? `Find what's new in the last 24 hours on each story the reader follows, or say there's nothing new:\n${listFollowed(followed)}`
-        : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).`;
+        : `Find the most important news from the last 24 hours for this section: ${s.title} (${s.about}).
+${alreadyRead(read.filter((t) => t.section === s.title), "Find other news, unless one of them has a real new development.")}`;
       const call = () =>
         ask(
           `Today is ${date}. You are researching one section of a personal newspaper for a reader in ${settings.location}.
@@ -222,15 +278,8 @@ ${preferences(settings)}`,
 const SKIPPED = `No research today: the search for this section failed. Write one short piece labeled "From the editor", with no sources, saying this section has no news today.`;
 
 // Step 2: write the edition from the notes. The stories and the extras are written at the same time.
-// `known` are the hard terms the reader already knows.
-export async function write(
-  settings: Settings,
-  date: string,
-  notes: string,
-  forecast: string,
-  followed: Followed[],
-  known: string[],
-) {
+export async function write(settings: Settings, date: string, notes: string, forecast: string, reader: Reader) {
+  const { known, read } = reader;
   const [stories, extras] = await Promise.all([
     ask(
       `You are the editor of "${settings.name}", a printed newspaper made for one reader in ${settings.location}.
@@ -249,12 +298,13 @@ Rules:
 - The word counts are limits: the paper is printed, and text that doesn't fit is cut off. Stay at or under them.
 - A section of under ${MAIN_STORY_WORDS} words holds one story. Bigger sections hold a main story and at most two shorter ones. Every extra story's headline takes space from the words.
 - Don't tell the same story in two sections.
+- ${continueRule(read)}
 - Write like a good newspaper: clear, concrete and short paragraphs.
 - In each story's terms, list the hard words and acronyms a reader at this reading level may not know, with what they mean in the story. Leave out words and acronyms most readers know (e.g. "TV", "NASA"). Often there are none.${
         known.length ? `\n- This reader already knows these, so never list them as terms: ${known.join(", ")}.` : ""
       }
 ${pictureRule(settings)}
-${deskRule(settings, followed)}
+${deskRule(settings, reader)}
 ${preferences(settings)}
 
 Research notes:
