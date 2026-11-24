@@ -57,8 +57,9 @@ export const spotCount = (layout: Layout) => new Set(LAYOUTS[layout].areas.join(
 // Spots wider than this (in inches) get the comic as a strip.
 export const STRIP_WIDTH = 4;
 
-// Sections with room for at least this many words hold a main story and shorter ones. Smaller ones hold one story.
-export const MAIN_STORY_WORDS = 250;
+// The shortest a section's shorter stories can be: about two paragraphs. A section is offered two or three stories only
+// when each shorter one gets this much and the main story at least half, so readers get fewer, fuller stories.
+export const SHORT_STORY_CHARACTERS = 400;
 
 // The comic's shape in a spot: a 3:1 strip when it's wide, four panels stacked (1:2) when it's tall enough, or 2 × 2.
 export function comicShape({ width, height }: { width: number; height: number }) {
@@ -135,6 +136,8 @@ export const TONES = {
   },
 };
 export const READING_LEVELS = { simple: "Simple", general: "General", expert: "Expert" };
+// The model that writes the stories (see lib/edition/claude.ts). Research and the extras always use Sonnet.
+export const WRITING_MODELS = { opus: "Opus: the best writing", sonnet: "Sonnet: costs less" };
 
 const choice = <T extends object>(options: T) => z.enum(Object.keys(options) as [keyof T & string]);
 const text = (max: number) => z.string().trim().max(max);
@@ -170,6 +173,7 @@ export const Settings = z.object({
   customSections: z.array(Section).max(30),
   tone: choice(TONES),
   readingLevel: choice(READING_LEVELS),
+  model: choice(WRITING_MODELS).default("opus"), // settings saved before this choice get Opus
   trustedSources: z.array(text(100)).max(30),
   blockedSources: z.array(text(100)).max(30),
   brief: text(2000),

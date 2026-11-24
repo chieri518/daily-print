@@ -1,6 +1,7 @@
 import { FatalError, sleep } from "workflow";
 import { assemble, research, write, type Edition, type Paper, type Reader } from "../lib/edition/editor.ts";
 import { recall, RECALL_DAYS, type Earlier } from "../lib/edition/recall.ts";
+import { fitStories } from "../lib/edition/revise.ts";
 import { birthdays } from "../lib/extras/google.ts";
 import { drawPictures } from "../lib/extras/illustrate.ts";
 import { step } from "../lib/edition/log.ts";
@@ -30,11 +31,14 @@ export async function makeEdition(id: string, userId: string, settings: Settings
     await next("Writing the stories");
     const forecastText = forecast ? describeForecast(forecast) : "";
     const { edition, usd } = await writeStep(settings, date, notes.notes, forecastText, reader);
-    await next("Drawing the pictures and printing");
+    await next("Drawing the pictures");
     const images = await picturesStep(settings, edition);
     const yesterday = await yesterdayStep(id, userId);
     const names = await birthdaysStep(userId, day);
-    await printStep(id, userId, settings, date, { edition, forecast, images, yesterday, names }, notes.usd + usd);
+    const parts = { edition, forecast, images, yesterday, names };
+    await next("Fitting the stories and printing");
+    const fitted = await fitStep(id, settings, date, parts, notes.notes);
+    await layoutStep(id, userId, settings, date, fitted.paper, parts, notes.usd + usd + fitted.usd);
   } catch (error) {
     // Errors from Supabase are plain objects, so String() alone would log "[object Object]".
     await failStep(id, stage, (error as { message?: string })?.message ?? String(error));
@@ -131,10 +135,18 @@ async function picturesStep(settings: Settings, edition: Edition) {
   return step("Drawing the pictures", () => drawPictures(settings, edition));
 }
 
+// Assembles the paper, lays it out, and rewrites the stories of sections that don't fit (see lib/edition/revise.ts).
+async function fitStep(id: string, settings: Settings, date: string, parts: Parts, notes: string) {
+  "use step";
+  const paper = assemble(parts.edition, parts.forecast, id, parts.names);
+  return step("Fitting the stories to the pages", () => fitStories(paper, layoutOf(settings, date, parts), notes));
+}
+
 // Claude and image calls cost money, so retry them only once.
 researchStep.maxRetries = 1;
 writeStep.maxRetries = 1;
 picturesStep.maxRetries = 1;
+fitStep.maxRetries = 1;
 
 // The puzzles from the reader's previous edition, whose answers this paper prints.
 async function yesterdayStep(id: string, userId: string) {
@@ -172,11 +184,20 @@ type Parts = {
   names: string[]; // today's birthdays
 };
 
-async function printStep(id: string, userId: string, settings: Settings, date: string, parts: Parts, costUsd: number) {
+// Lays out the paper, saves its PDF and pictures, and finishes the edition. This happens once, when the paper is made:
+// the Paper page draws it again with the same fit, and the printer box only downloads the PDF.
+async function layoutStep(
+  id: string,
+  userId: string,
+  settings: Settings,
+  date: string,
+  paper: Paper,
+  parts: Parts,
+  costUsd: number,
+) {
   "use step";
-  const paper = assemble(parts.edition, parts.forecast, id, parts.names);
-  const layout: Layout = { settings, date, yesterday: parts.yesterday, pictures: parts.images, fit: null };
-  const { pdf, fit, overflowing } = await step("Printing the PDF", () => renderPdf(paper, layout));
+  const layout = layoutOf(settings, date, parts);
+  const { pdf, fit, overflowing } = await step("Laying out the paper", () => renderPdf(paper, layout));
   if (overflowing.length) console.warn(`Edition ${id}: text is cut off on page ${overflowing.join(", ")}.`);
   // The PDF for printing. The Paper page draws the edition again from its text and layout, with the pictures from storage.
   await upload(`${userId}/${id}.pdf`, pdf, "application/pdf");
@@ -186,6 +207,15 @@ async function printStep(id: string, userId: string, settings: Settings, date: s
   };
   await save(id, { status: "ready", content: paper, layout: { ...layout, pictures, fit }, cost_usd: costUsd });
 }
+
+// The layout to measure and print, before its fit is measured.
+const layoutOf = (settings: Settings, date: string, parts: Parts): Layout => ({
+  settings,
+  date,
+  yesterday: parts.yesterday,
+  pictures: parts.images,
+  fit: null,
+});
 
 // Saves a picture drawn as a data URL, and returns its path in storage.
 async function uploadPicture(path: string, dataUrl: string | null) {

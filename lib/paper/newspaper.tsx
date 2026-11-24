@@ -1,27 +1,48 @@
 import english from "hyphen/en";
-import type { CSSProperties, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import type { Paper, Story } from "../edition/editor.ts";
 import { CrosswordPuzzle, Jumble, Sudoku, Trivia, Weather, WordOfTheDay, WordSearch } from "./features.tsx";
 import type { Puzzles } from "../extras/puzzles.ts";
 import {
   comicShape,
   LAYOUTS,
-  MAIN_STORY_WORDS,
   PAPER_SIZES,
   TYPEFACES,
   type Feature,
   type Section,
   type Settings,
 } from "../settings.ts";
-import { filledAreas, gridAreas, illustratedSpot, measure, spotLetter, textColumns, words, type Size } from "../edition/space.ts";
+import {
+  filledAreas,
+  gridAreas,
+  illustratedSpot,
+  isLead,
+  measure,
+  spotLetter,
+  textColumns,
+  type Size,
+} from "../edition/space.ts";
 import { todayLine } from "../extras/weather.ts";
 
 // The newspaper, one <section> per printed page. The same components draw it on the Paper page and for print
 // (render.ts prints them to a PDF), with the same stylesheet (css.ts, scoped to .paper), so the two always match.
 
-// How the printed pages came out: each page's font size after shrinking to fit, the section each filler went into
-// (or null if it fit nowhere), and the comic's height. render.ts measures it in Chromium.
-export type Fit = { fontSizes: number[]; fillers: (string | null)[]; comicHeight: number | null };
+// How the printed pages came out: the font size of each section that shrank to fit, by spot, the section each filler
+// went into (or null if it fit nowhere), the comic's height, the timelines and pull quotes there was room for (e.g.
+// "3f9a21c4-2:timeline"), and the empty height left in each section, in inches. render.ts measures it in Chromium.
+// Older editions shrank whole pages: their font sizes are by page number ("0"). Editions laid out before `extras`
+// showed every timeline and no pull quotes.
+export type Fit = {
+  fontSizes: Record<string, number>;
+  fillers: (string | null)[];
+  comicHeight: number | null;
+  extras?: string[];
+  space?: Record<string, number>;
+};
+
+// Draws a story's timeline or pull quote where there was room for it. While measuring, each is drawn hidden, for
+// render.ts to try.
+type Extra = (key: string, node: ReactNode) => ReactNode;
 
 // Everything besides the text needed to draw an edition, saved with it so it can be drawn again.
 export type Layout = {
@@ -69,15 +90,20 @@ export function Newspaper({ paper, layout, follow }: { paper: Paper; layout: Lay
     ),
   ].filter(Boolean);
   const fillersIn = (spot: string) => fit && fillers.filter((_, k) => fit.fillers[k] === spot);
+  const extra: Extra = (key, node) => {
+    if (!fit) return <div className="extra" data-extra={key} hidden>{node}</div>;
+    const shown = fit.extras ? fit.extras.includes(key) : key.endsWith(":timeline");
+    return shown && <div className="extra">{node}</div>;
+  };
 
   return (
     <div className="paper" style={style}>
       {!fit && <div className="fillers">{fillers}</div>}
       {settings.pages.map((_, i) => (
         <section className="page" key={i}>
-          <div className="content" style={fit ? { fontSize: `${fit.fontSizes[i]}pt` } : undefined}>
+          <div className="content" style={{ fontSize: fontSize(fit, i) }}>
             {i === 0 && <Masthead paper={paper} settings={settings} date={date} />}
-            <Spots paper={paper} layout={layout} page={i} fillersIn={fillersIn} follow={follow} />
+            <Spots paper={paper} layout={layout} page={i} fillersIn={fillersIn} extra={extra} follow={follow} />
           </div>
           <footer>
             <span>
@@ -108,6 +134,10 @@ function Masthead({ paper, settings, date }: { paper: Paper; settings: Settings;
   );
 }
 
+// A page's or a section's font size, if it shrank to fit.
+const fontSize = (fit: Fit | null, key: string | number) => 
+  fit?.fontSizes[key] ? `${fit.fontSizes[key]}pt` : undefined;
+
 // A page is its layout's grid. Empty spots are taken over by a section next to them (see filledAreas).
 // Each section has a spot id, "page.slot", which the fit uses to place fillers.
 function Spots(props: {
@@ -115,9 +145,10 @@ function Spots(props: {
   layout: Layout;
   page: number;
   fillersIn: (spot: string) => ReactNode;
+  extra: Extra;
   follow?: Follow;
 }) {
-  const { paper, layout, page: i, fillersIn, follow } = props;
+  const { paper, layout, page: i, fillersIn, extra, follow } = props;
   const { settings, yesterday, pictures, fit } = layout;
   const page = settings.pages[i];
   const space = measure(page, i === 0, settings.paperSize);
@@ -181,7 +212,7 @@ function Spots(props: {
         className="section"
         key={j}
         data-spot={spot}
-        style={{ gridArea: spotLetter(j), "--columns": textColumns(size.width) } as CSSProperties}
+        style={{ gridArea: spotLetter(j), "--columns": textColumns(size.width), fontSize: fontSize(fit, spot) } as CSSProperties}
       >
         <h3 className="section-title">{section.title}</h3>
         {section.kind ? (
@@ -191,13 +222,14 @@ function Spots(props: {
             {lead && (
               <Article
                 story={lead}
-                lead={words(size) >= MAIN_STORY_WORDS}
+                lead={isLead(size)}
                 figure={figureFor(lead, j)}
                 button={follow?.(lead, section)}
+                extra={extra}
               />
             )}
             {others.map((s, n) => (
-              <Article key={n} story={s} figure={figureFor(s, j)} button={follow?.(s, section)} />
+              <Article key={n} story={s} figure={figureFor(s, j)} button={follow?.(s, section)} extra={extra} />
             ))}
           </>
         )}
@@ -242,8 +274,10 @@ function withTerms(story: Story) {
 }
 
 // `button` is the follow button, on the Paper page. It sits on the rule above the story, so it moves no text.
-function Article(props: { story: Story; lead?: boolean; figure: ReactNode; button?: ReactNode }) {
-  const { story: s, lead = false, figure, button } = props;
+// The timeline goes below the story, and the pull quote after its first paragraph, where there's room for them.
+function Article(props: { story: Story; lead?: boolean; figure: ReactNode; button?: ReactNode; extra: Extra }) {
+  const { story: s, lead = false, figure, button, extra } = props;
+  const quote = pullQuote(s);
   return (
     <article className={lead ? "lead" : ""}>
       {button}
@@ -253,18 +287,31 @@ function Article(props: { story: Story; lead?: boolean; figure: ReactNode; butto
       {figure}
       <div className="body">
         {withTerms(s).map((p, n) => (
-          <p key={n}>{p}</p>
+          <Fragment key={n}>
+            <p>{p}</p>
+            {n === 0 && quote && extra(`${s.id}:quote`, <blockquote className="pull-quote">{hyphenate(quote)}</blockquote>)}
+          </Fragment>
         ))}
         {s.sources.length > 0 && <p className="sources">Sources: {hyphenate(s.sources.map((src) => src.name).join(", "))}</p>}
       </div>
-      <StoryTimeline timeline={s.timeline} whyItMatters={s.whyItMatters} />
+      {s.timeline?.length >= 3 &&
+        extra(`${s.id}:timeline`, <StoryTimeline timeline={s.timeline} whyItMatters={s.whyItMatters} />)}
     </article>
   );
 }
 
-// Older editions have no timeline; their saved layout and PDF remain valid.
-function StoryTimeline({ timeline, whyItMatters }: { timeline?: Story["timeline"]; whyItMatters?: string }) {
-  if (!timeline || timeline.length < 3) return null;
+// A story's pull quote, if it has one. It's printed after the first paragraph as an excerpt, so it must be word for word
+// from the third paragraph or later (ignoring surrounding quote marks and end punctuation): the reader doesn't meet
+// the same words twice in a row. Older editions have none.
+function pullQuote(s: Story) {
+  const quote = s.pullQuote?.trim().replace(/^["“]+|["”.,;:!?]+$/g, "");
+  if (!quote || !s.paragraphs.slice(2).join(" ").includes(quote)) return "";
+  // Stripping the opening mark of a quote that ends midway ("Not here," she said) leaves its closing one alone.
+  return (quote.match(/["“”]/g) ?? []).length % 2 ? `“${quote}` : quote;
+}
+
+// Older editions may have no timeline; it's only drawn with 3 milestones.
+function StoryTimeline({ timeline, whyItMatters }: { timeline: Story["timeline"]; whyItMatters?: string }) {
   const milestones = timeline.slice(0, 3);
   return (
     <aside className="story-timeline" aria-label="Story progression">
@@ -273,7 +320,6 @@ function StoryTimeline({ timeline, whyItMatters }: { timeline?: Story["timeline"
         {milestones.map((milestone, i) => (
           <li key={i}>
             <span className="timeline-date">{milestone.date}</span>
-            <span className="timeline-stage">{i === 0 ? "Started" : i === milestones.length - 1 ? "Now" : "Changed"}</span>
             <span>{hyphenate(milestone.event)}</span>
           </li>
         ))}

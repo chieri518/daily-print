@@ -20,7 +20,7 @@ flowchart LR
 
   subgraph Supabase
     AUTH["Auth<br/>Google sign-in"]
-    DB[("Database<br/>papers · editions · printers · google_connections · followed_stories")]
+    DB[("Database<br/>papers · editions · printers · google_connections · followed_stories · known_words")]
     FILES[("Storage<br/>edition PDFs and pictures")]
   end
 
@@ -54,7 +54,7 @@ flowchart LR
 | **Printer API** | Answers the printer box: the paper to print, if any, and its report afterwards | [app/api/printer](../app/api/printer/), [lib/printing/printer.ts](../lib/printing/printer.ts) |
 | **Printer box** | A Mac or Raspberry Pi (or other Linux computer) that checks every 2 minutes, prints the paper through CUPS with the owner's printer settings, and reports back | [public/printer/](../public/printer/), [PRINTER_SETUP.md](PRINTER_SETUP.md) |
 | **Edition pipeline** | The work itself, shared by the workflow and `npm run paper`: research, writing, pictures, puzzles, layout, PDF | [lib/](../lib/) |
-| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`), the stories you follow (`followed_stories`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
+| **Supabase** | Who you are (Auth), your settings (`papers`), each edition and its status (`editions`), your printer box's key (`printers`), your Google connection (`google_connections`), the stories you follow (`followed_stories`), the hard terms you know (`known_words`) and the PDFs (Storage) | [supabase/migrations/](../supabase/migrations/) |
 
 ## Making an edition
 
@@ -64,17 +64,18 @@ Pressing **Generate** adds a row to `editions` with status **writing**, starts t
 flowchart LR
   R["Reader<br/>followed stories · known words<br/>what they've read (recall)"] --> B & C
   A["Forecast<br/>Open-Meteo"] --> C
-  B["Research<br/>Claude, one call per section, all at once<br/>Your Desk: the followed stories"] --> C["Write<br/>stories (Opus) + extras (Sonnet), at once"]
+  B["Research<br/>Claude Sonnet, one call per section, all at once<br/>Your Desk: the followed stories"] --> C["Write<br/>stories (the reader's model, Opus by default) + extras (Sonnet), at once"]
   C --> D["Pictures<br/>illustration + comic, at once"]
   D --> E["Yesterday's puzzles<br/>+ birthdays"]
-  E --> F["Print<br/>puzzles · layout · PDF · upload"]
+  E --> G["Fit<br/>lay out, then rewrite the sections that don't fit<br/>(one call, only when needed)"]
+  G --> F["Print<br/>layout · PDF · upload"]
 ```
 
 First it loads what the editor should know about the **reader**: the stories they follow, the hard terms they know, and what they've already read. **Recall** ([lib/edition/recall.ts](../lib/edition/recall.ts)) works that out from their ready editions of the last 14 days, with no Claude call and no table of its own. Each story becomes a **thread** with the stories that `continues` it, listed once with its latest id and the days it ran. Only the newest edition of each day counts as read, and Your Desk is left out. Each section's research gets the threads from that section and looks for other news unless one has a real development; the editor gets them all, writes only what's new on a thread, and sets `continues` to its id. This is the start of the reader's knowledge graph.
 
-Before each costly step, the workflow checks that the edition is still **writing**, and in the same query saves the step it's starting (`stage`, for example "Researching the news"), which the Paper and Editions pages show. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with the error, which the Editions page shows.
+Before each costly step, the workflow checks that the edition is still **writing**, and in the same query saves the step it's starting (`stage`, for example "Researching the news"), which the Paper and Editions pages show. When it finishes, it sets the status to **ready** and saves the text and puzzles. If anything fails, it sets **failed** with a plain sentence naming the stage that went wrong, which the Editions page shows; the error itself goes to the logs.
 
-The paper is drawn by React components ([lib/paper/newspaper.tsx](../lib/paper/newspaper.tsx)) with one stylesheet ([lib/paper/css.ts](../lib/paper/css.ts), scoped to `.paper`). The print step draws them in Chromium and measures the **fit**: each page's font size after shrinking to fit, which section each filler went into, and the comic's height. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. Hard terms the editor picked are wrapped in `.term` spans; only the site's stylesheet underlines them, and the Paper page shows their definitions. The Paper page also passes `Newspaper` a **follow button** for each story (`app/client.tsx`), which the PDF never gets: it sits on the rule above the story, positioned so it moves no text. Each story has a short **id** (`withIds` in [lib/edition/editor.ts](../lib/edition/editor.ts)), from its edition's id and its place in the paper, so older papers get the same ids when read. Following saves the story's id, headline and deck in `followed_stories`; the next edition's research looks up what's new on each, and the editor writes an update on each in **Your Desk**, with the id of the story it `updates`. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
+The paper is drawn by React components ([lib/paper/newspaper.tsx](../lib/paper/newspaper.tsx)) with one stylesheet ([lib/paper/css.ts](../lib/paper/css.ts), scoped to `.paper`). The **layout step** (`layoutStep`, run once when the paper is made, never when it's printed) draws them in Chromium and measures the **fit**: the font size of each section whose text shrank to fit (one long section doesn't shrink the rest of its page), which timelines and pull quotes there was room for, which section each filler went into, the comic's height, and the empty space left in each section. It tries timelines, then pull quotes, then fillers, keeping each only where its section still fits (see `measureFit` in [lib/paper/render.ts](../lib/paper/render.ts)). Before it, the **fit step** lays the paper out once to check it ([lib/edition/revise.ts](../lib/edition/revise.ts)): a section whose text shrank below 9.5pt, or that has 0.4 inches or more of white space at full size, gets its stories rewritten to the length that fits, all such sections in one Claude call (the reader's writing model) with the research notes, and only once. Most days nothing needs it, and it costs nothing but a second layout. It prints the PDF from the pages drawn with that fit, and saves the edition's **layout** (settings, date, yesterday's puzzles, picture paths and the fit) next to its text. The pictures go to Storage (`<reader>/<edition>-illustration` and `-comic`). The **Paper** page draws the latest edition with the same components, layout and stylesheet, so it lays out exactly like the PDF, and it's a real web page that new features can build on. Story text is hyphenated by the code (soft hyphens), not the browser, so every browser breaks lines where the PDF does. Hard terms the editor picked are wrapped in `.term` spans; only the site's stylesheet underlines them, and the Paper page shows their definitions. The Paper page also passes `Newspaper` a **follow button** for each story (`app/client.tsx`), which the PDF never gets: it sits on the rule above the story, positioned so it moves no text. Each story has a short **id** (`withIds` in [lib/edition/editor.ts](../lib/edition/editor.ts)), from its edition's id and its place in the paper, so older papers get the same ids when read. Following saves the story's id, headline and deck in `followed_stories`; the next edition's research looks up what's new on each, and the editor writes an update on each in **Your Desk**, with the id of the story it `updates`. On screen, a small `@media screen` block shows the pages as sheets on a gray background.
 
 ```mermaid
 stateDiagram-v2
@@ -82,7 +83,7 @@ stateDiagram-v2
   scheduled --> writing: 20 minutes before the print time
   [*] --> writing: Generate
   writing --> ready: PDF saved
-  writing --> failed: an error, or over 30 minutes
+  writing --> failed: an error, or over 10 minutes
   scheduled --> failed: still waiting at the print time
   scheduled --> stopped: Cancel
   writing --> stopped: Stop
@@ -90,7 +91,7 @@ stateDiagram-v2
 
 ### Why a background job
 
-An edition takes about 3 minutes. That's too long for a web request: the browser would wait, and Vercel ends requests after a few minutes. So Generate starts a **workflow** (the [Workflow SDK](https://workflow-sdk.dev)) and returns right away. A workflow is a function split into steps, where each finished step's result is saved. If the server restarts mid-edition, the workflow carries on from the last finished step, instead of starting over and paying for Claude again.
+An edition takes 3 to 4 minutes. That's too long for a web request: the browser would wait, and Vercel ends requests after a few minutes. So Generate starts a **workflow** (the [Workflow SDK](https://workflow-sdk.dev)) and returns right away. A workflow is a function split into steps, where each finished step's result is saved. If the server restarts mid-edition, the workflow carries on from the last finished step, instead of starting over and paying for Claude again.
 
 ### Who controls it
 
@@ -110,18 +111,18 @@ The app never keeps track of the workflow itself. That way, Stop works the same 
 
 Two things to know about local runs:
 - **Stopping `npm run dev` only pauses editions.** They carry on the next time it starts. Use **Stop** to end one.
-- **`next build` deletes `.next`, including the progress of editions being written.** Don't build while the dev server is running. A lost edition stays **writing** until you press Stop.
+- **`next build` deletes `.next`, including the progress of editions being written.** Don't build while the dev server is running. A lost edition stays **writing** until the sweep marks it failed (below), or you press Stop.
 
 ## Printing every morning
 
 Readers set a **print time** in Customize. Their time zone comes from their browser.
 
 1. **Scheduling.** Each reader's next paper is added as a **scheduled** edition, with the moment it should print (`print_at`). This happens when they save their settings, and once a day for everyone, from a Vercel cron job (see [vercel.json](../vercel.json)). Vercel's free plan only allows a job once a day, at a time that can drift by up to an hour, so the job schedules the **next** paper rather than making it.
-2. **Waiting.** Each scheduled paper is a workflow that **sleeps** until 20 minutes before its print time. Sleeping uses no computing. Changing the print time cancels the waiting paper and schedules a new one.
+2. **Waiting.** Each scheduled paper is a workflow that **sleeps** until 20 minutes before its print time. Sleeping uses no computing. Changing the print time deletes the waiting paper and schedules a new one. A paper the reader cancels stays cancelled: it isn't scheduled again.
 3. **Making it.** The workflow wakes, sets the edition to **writing**, loads the reader's settings as they are by then, and makes the edition as usual.
 4. **Printing.** The printer box asks the printer API every 2 minutes whether there's a paper. It gets one only when the paper is ready, its print time has come, and it's less than an hour late. It downloads the PDF, prints it, and reports **printed** or the error.
 5. **Skipping.** A paper not printed within an hour of its print time is skipped (printer off, out of paper, box offline). The Editions page says what happened: "Prints at 6:30 am", "Printed at 6:31 am", or "Not printed".
-6. **Sweeping up.** A workflow can be lost (for example, `next build` locally) or crash, leaving its paper **writing** or **scheduled** forever, which would also stop the reader's next paper being scheduled. `sweep` in [lib/printing/schedule.ts](../lib/printing/schedule.ts) marks **failed** any paper written for over 30 minutes, or still waiting after its print time. It runs in the daily scheduler (for everyone, before scheduling), each time a printer box checks in (for its reader) and before Generate. A paper made after this for the same edition is thrown away, since the workflow only saves editions that are still **writing**.
+6. **Sweeping up.** A workflow can be lost (for example, `next build` locally) or crash, leaving its paper **writing** or **scheduled** forever, which would also stop the reader's next paper being scheduled. `sweep` in [lib/printing/schedule.ts](../lib/printing/schedule.ts) marks **failed** any paper written for over 10 minutes (counted from when it was made, or 20 minutes before its print time, whichever is later), or still waiting after its print time. It runs in the daily scheduler (for everyone, before scheduling), each time a printer box checks in (for its reader) and before Generate. A paper made after this for the same edition is thrown away, since the workflow only saves editions that are still **writing**.
 
 **The printer key.** The box proves which reader it belongs to with a secret key, made with **Set up a printer box** in Customize. The key is shown once, inside a setup command to run on the Pi. The app keeps only a scrambled copy (a hash), so the key can't be read back from the database. The Pi saves the key in `/etc/daily-print.conf` and sends it with every request. Making a new key replaces the old one, which stops working.
 

@@ -1,6 +1,7 @@
-// How big each spot of a page's layout is in print, in inches, and so how many words its stories can have.
-// Used by the editor (word limits), the print layout and the Customize page (previews, and what fits where).
-// Word counts are estimates: text that's too long shrinks to fit, and fillers go in what's left (see render.ts).
+// How big each spot of a page's layout is in print, in inches, and so how many characters its stories can have.
+// Used by the editor (character ranges), the print layout and the Customize page (previews, and what fits where).
+// They're estimates: text that's too long shrinks to fit, and timelines, pull quotes and fillers go in what's left
+// (see render.ts).
 import { LAYOUTS, PAPER_SIZES, type Page, type Settings } from "../settings.ts";
 
 const MARGIN = 0.5; // around the page
@@ -9,8 +10,15 @@ const MASTHEAD = 1.3; // on the front page
 const ROW_GAP = 0.14; // 1em at 10pt
 const COLUMN_GAP = 0.21; // 1.5em
 const TRACKS = 6; // the layouts' grid; see LAYOUTS
-const WORDS_PER_SQUARE_INCH = 13; // of body text at 10pt, with a small margin
-const STORY_OVERHEAD = 1.1; // inches of height for the section title, headline, deck and sources
+// Measured by drawing every layout at 10pt with stories of typical length (see DECISIONS.md): the story text a square
+// inch holds, spaces included, and what each story's headline, deck and sources take from a spot. They take a height,
+// and an area, since they wrap onto more lines in a narrow spot. A lead story's bigger headline takes more height.
+const CHARACTERS_PER_SQUARE_INCH = 68;
+const STORY_HEIGHT = 0.7;
+const HEADLINE_AREA = 3; // square inches
+const LEAD_HEADLINE = 0.7;
+const LEAD_STORY_CHARACTERS = 1240; // a spot with room for this much as one story leads with a big headline
+const CHARACTERS_PER_WORD = 6.2;
 
 export type Size = { width: number; height: number };
 // A page, or one being edited, whose spots may be empty.
@@ -70,12 +78,26 @@ export function measure(page: Spots, front: boolean, paperSize: Settings["paperS
   });
 }
 
-// How many words fit in a spot of stories this size, rounded to tens.
-export const words = ({ width, height }: Size) =>
-  Math.max(0, Math.round(((height - STORY_OVERHEAD) * width * WORDS_PER_SQUARE_INCH) / 10) * 10);
+// The story text a spot holds when told as this many stories, before rounding.
+const room = ({ width, height }: Size, stories: number, lead: boolean) =>
+  CHARACTERS_PER_SQUARE_INCH * width * (height - stories * (STORY_HEIGHT + HEADLINE_AREA / width) - (lead ? LEAD_HEADLINE : 0));
 
-// How many words the front-page illustration (3:1, the spot's width) takes the place of.
-export const pictureWords = (width: number) => Math.round((width * (width / 3) * WORDS_PER_SQUARE_INCH) / 10) * 10;
+// Whether a spot's first story is a lead story, with a big headline: when the spot is big.
+export const isLead = (size: Size) => room(size, 1, false) >= LEAD_STORY_CHARACTERS;
+
+// How many characters of story text fit in a spot of stories this size, told as one story or more, rounded to fifties.
+export const characters = (size: Size, stories = 1) =>
+  Math.max(0, Math.round(room(size, stories, isLead(size)) / 50) * 50);
+
+// The same in words, rounded to tens, for readers in Customize.
+export const words = (size: Size) => Math.round(characters(size) / CHARACTERS_PER_WORD / 10) * 10;
+
+// How many characters of story text fit in an empty area this size, in inches, rounded to fifties.
+export const charactersIn = (width: number, height: number) =>
+  Math.round((width * height * CHARACTERS_PER_SQUARE_INCH) / 50) * 50;
+
+// How many characters the front-page illustration (3:1, the spot's width) takes the place of.
+export const pictureCharacters = (width: number) => charactersIn(width, width / 3);
 
 // How many text columns a story uses in a spot this wide: about one per 2.3 inches.
 export const textColumns = (width: number) => Math.max(1, Math.floor(width / 2.3));

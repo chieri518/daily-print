@@ -1,5 +1,5 @@
 // The newspaper's stylesheet, black and white, for newspaper.tsx. Everything is scoped to .paper, so it can sit inside the
-// web app without clashing with its styles. Sizes are in em so the fit step can shrink a whole page at once.
+// web app without clashing with its styles. Sizes are in em so the layout step can shrink a whole section at once.
 export const css = `
 .paper {
 font: 16px/normal var(--body), serif; color: #000; background: #fff;
@@ -38,7 +38,8 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .label { font-size: 0.75em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; }
 .deck { font-style: italic; margin-bottom: 0.5em; }
 .body { columns: var(--columns); column-gap: 1.5em; column-rule: 1px solid #999; text-align: justify; }
-.body p + p { text-indent: 1em; }
+.body p:not(:first-child, .sources) { text-indent: 1em; }
+.pull-quote { margin: 0.5em 0; padding: 0.4em 0; border-top: 2px solid #000; border-bottom: 1px solid #000; font-family: var(--headline), serif; font-size: 1.25em; font-style: italic; line-height: 1.2; text-align: center; break-inside: avoid; }
 .body .sources { text-indent: 0; font-size: 0.8em; font-style: italic; margin-top: 0.3em; }
 
 /* A compact chronology below each news story, shared by screen and print. */
@@ -49,7 +50,6 @@ h2 { font-family: var(--headline), serif; font-size: 1.6em; line-height: 1.1; ma
 .story-timeline li::before { content: ""; position: absolute; top: -0.25em; left: 0; width: 0.5em; height: 0.5em; border: 1px solid #000; border-radius: 50%; background: #fff; }
 .story-timeline li:last-child::before { background: #000; }
 .timeline-date { display: block; font-weight: bold; margin-bottom: 0.2em; }
-.timeline-stage { display: block; font-size: 0.85em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2em; }
 .timeline-impact { border-top: 1px solid #ddd; margin-top: 0.35em; padding-top: 0.35em; font-size: 0.72em; line-height: 1.3; }
 .timeline-impact b { text-transform: uppercase; letter-spacing: 0.04em; }
 @container (max-width: 2.5in) {
